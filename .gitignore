@@ -22,9 +22,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 src/components/Cart.js
-src/components/Login.js
 .gitignore
-src/components/Signup.js
-src/styles/Login.css
 src/styles/Profile.css
-src/styles/Signup.css

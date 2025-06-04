@@ -1,0 +1,133 @@
+:root {
+  --gash-primary: #f7ca00;
+  --gash-primary-hover: #f0c14b;
+  --gash-error: #b12704;
+  --gash-text: #0f1111;
+  --gash-link: #0066c0;
+  --gash-border: #888;
+  --gash-bg: #f3f3f3;
+  --gash-white: #fff;
+}
+
+.signup-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: var(--gash-bg);
+  font-family: Arial, sans-serif;
+  min-height: 90vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.signup-box {
+  width: 100%;
+  max-width: 350px;
+  padding: 20px;
+  background-color: var(--gash-white);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.signup-box h1 {
+  font-size: 1.5rem;
+  color: var(--gash-text);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.error {
+  color: var(--gash-error);
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+}
+
+.signup-box label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--gash-text);
+  margin-bottom: 5px;
+}
+
+.signup-box input {
+  width: 100%;
+  max-width: 332px;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid var(--gash-border);
+  border-radius: 3px;
+  font-family: Arial, sans-serif;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.signup-box input:focus {
+  outline: none;
+  border-color: var(--gash-primary);
+  box-shadow: 0 0 0 2px rgba(247, 202, 0, 0.3);
+}
+
+.create-account-button {
+  width: 100%;
+  max-width: 332px;
+  padding: 10px;
+  margin-top: 16px;
+  background-color: var(--gash-primary);
+  border: 1px solid #a88734;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+  color: var(--gash-text);
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.create-account-button:hover:not(:disabled) {
+  background-color: var(--gash-primary-hover);
+}
+
+.create-account-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.login-prompt {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--gash-text);
+  margin-top: 36px;
+}
+
+.login-link {
+  color: var(--gash-link);
+  text-decoration: none;
+}
+
+.login-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .signup-container {
+    padding: 10px;
+  }
+
+  .signup-box {
+    padding: 15px;
+  }
+
+  .signup-box h1 {
+    font-size: 1.3rem;
+  }
+
+  .create-account-button {
+    padding: 8px;
+  }
+
+  .signup-box input {
+    max-width: 100%;
+  }
+}
