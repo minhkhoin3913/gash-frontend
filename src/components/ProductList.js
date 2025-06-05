@@ -52,12 +52,25 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// API functions
+// API client with interceptors for better error handling
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    const status = error.response?.status;
+    const message = status === 401 ? "Unauthorized access - please log in" :
+                    status === 404 ? "Resource not found" :
+                    status >= 500 ? "Server error - please try again later" :
+                    "Network error - please check your connection";
+    return Promise.reject({ ...error, message });
+  }
+);
+
+// API functions
 const fetchWithRetry = async (url, retries = 3, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -97,7 +110,7 @@ const ProductList = () => {
 
   const navigate = useNavigate();
 
-  // Debounce filter changes to avoid excessive filtering
+  // Debounce filter changes
   const debouncedCategory = useDebounce(selectedCategory, 300);
   const debouncedColor = useDebounce(selectedColor, 300);
   const debouncedSize = useDebounce(selectedSize, 300);
@@ -111,7 +124,7 @@ const ProductList = () => {
       const productsData = await fetchWithRetry("/products");
       
       if (!Array.isArray(productsData) || productsData.length === 0) {
-        setError("No products available");
+        setError("No products available at this time");
         setProducts([]);
         setCategories([]);
         return;
@@ -119,7 +132,7 @@ const ProductList = () => {
 
       setProducts(productsData);
       
-      // Extract unique categories with better error handling
+      // Extract unique categories
       const uniqueCategories = [
         ...new Set(
           productsData
@@ -130,15 +143,7 @@ const ProductList = () => {
       
       setCategories(uniqueCategories);
     } catch (err) {
-      const errorMessage = err.code === 'ECONNABORTED' 
-        ? "Request timeout - please check your connection"
-        : err.response?.status === 404 
-          ? "Products not found" 
-          : err.response?.status >= 500
-            ? "Server error - please try again later"
-            : "Failed to fetch products";
-      
-      setError(errorMessage);
+      setError(err.message || "Failed to fetch products");
       console.error("Error fetching products:", err);
     } finally {
       setLoading(false);
@@ -156,7 +161,7 @@ const ProductList = () => {
 
       setVariants(variantsData);
       
-      // Extract unique colors and sizes with better validation
+      // Extract unique colors and sizes
       const uniqueColors = [
         ...new Set(
           variantsData
@@ -177,7 +182,6 @@ const ProductList = () => {
       setSizes(uniqueSizes);
     } catch (err) {
       console.error("Error fetching variants:", err);
-      // Don't show error to user for variants as it's not critical
     }
   }, []);
 
@@ -195,10 +199,8 @@ const ProductList = () => {
       size: selectedSize
     };
 
-    // Update localStorage
     setStoredFilters(currentFilters);
 
-    // Update URL params
     const newSearchParams = new URLSearchParams();
     if (selectedCategory !== DEFAULT_FILTERS.category) {
       newSearchParams.set('category', selectedCategory);
@@ -210,10 +212,12 @@ const ProductList = () => {
       newSearchParams.set('size', selectedSize);
     }
 
-    setSearchParams(newSearchParams, { replace: true });
-  }, [selectedCategory, selectedColor, selectedSize, setStoredFilters, setSearchParams]);
+    if (newSearchParams.toString() !== searchParams.toString()) {
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [selectedCategory, selectedColor, selectedSize, setStoredFilters, setSearchParams, searchParams]);
 
-  // Optimized product filtering with error handling
+  // Optimized product filtering
   const filteredProducts = useMemo(() => {
     if (!products.length) return [];
     
@@ -222,14 +226,12 @@ const ProductList = () => {
     try {
       let filtered = [...products];
 
-      // Filter by category
       if (debouncedCategory !== "All Categories") {
         filtered = filtered.filter(
           product => product.cat_id?.cat_name === debouncedCategory
         );
       }
 
-      // Filter by color and size using variants
       if (debouncedColor !== "All Colors" || debouncedSize !== "All Sizes") {
         const matchingVariantIds = variants
           .filter(variant => {
@@ -249,20 +251,19 @@ const ProductList = () => {
         );
       }
 
-      // Sort products by name for consistent ordering
       filtered.sort((a, b) => (a.pro_name || '').localeCompare(b.pro_name || ''));
       
       return filtered;
     } catch (err) {
       console.error("Error filtering products:", err);
+      setError("Error applying filters");
       return products;
     } finally {
-      // Use setTimeout to prevent rapid state updates
       setTimeout(() => setIsFiltering(false), 100);
     }
   }, [products, variants, debouncedCategory, debouncedColor, debouncedSize]);
 
-  // Event handlers with better validation
+  // Event handlers
   const handleFilterChange = useCallback((filterType, value) => {
     switch (filterType) {
       case 'category':
@@ -305,18 +306,17 @@ const ProductList = () => {
     setSelectedSize(DEFAULT_FILTERS.size);
   }, []);
 
-  // Helper function to format price
+  // Helper functions
   const formatPrice = useCallback((price) => {
     if (typeof price !== 'number' || isNaN(price)) return "N/A";
     return `$${price.toFixed(2)}`;
   }, []);
 
-  // Helper function to generate star rating
   const renderStarRating = useCallback((rating = 0) => {
     return [...Array(5)].map((_, i) => (
       <span 
         key={i} 
-        className={`product-list-star ${i < rating ? 'filled' : 'empty'}`}
+        className={`product-list-star ${i < Math.round(rating) ? 'filled' : 'empty'}`}
         aria-hidden="true"
       >
         ★
@@ -326,8 +326,8 @@ const ProductList = () => {
 
   // Filter section component
   const FilterSection = ({ title, options, selectedValue, filterType }) => (
-    <div className="product-list-filter-group">
-      <h3>{title}</h3>
+    <fieldset className="product-list-filter-group">
+      <legend>{title}</legend>
       <label>
         <input
           type="radio"
@@ -352,12 +352,12 @@ const ProductList = () => {
           {option}
         </label>
       ))}
-    </div>
+    </fieldset>
   );
 
   const hasActiveFilters = selectedCategory !== DEFAULT_FILTERS.category || 
-                          selectedColor !== DEFAULT_FILTERS.color || 
-                          selectedSize !== DEFAULT_FILTERS.size;
+                         selectedColor !== DEFAULT_FILTERS.color || 
+                         selectedSize !== DEFAULT_FILTERS.size;
 
   return (
     <div className="product-list-container">
@@ -465,7 +465,7 @@ const ProductList = () => {
               >
                 <div className="product-list-image-container">
                   <img
-                    src={product.imageURL}
+                    src={product.imageURL || '/placeholder-image.png'}
                     alt={product.pro_name || 'Product image'}
                     loading="lazy"
                     onError={(e) => {
@@ -480,12 +480,12 @@ const ProductList = () => {
                     {product.pro_name || 'Unnamed Product'}
                   </h2>
                   
-                  <div className="product-list-rating" role="img" aria-label="5 out of 5 stars">
-                    {renderStarRating(5)}
+                  {/* <div className="product-list-rating" role="img" aria-label={`${product.rating || 0} out of 5 stars`}>
+                    {renderStarRating(product.rating || 0)}
                     <span className="product-list-review-count" aria-label="No reviews available">
                       (N/A)
                     </span>
-                  </div>
+                  </div> */}
                   
                   <p className="product-list-price" aria-label={`Price: ${formatPrice(product.pro_price)}`}>
                     {formatPrice(product.pro_price)}

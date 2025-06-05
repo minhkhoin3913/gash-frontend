@@ -28,3 +28,4 @@ src/components/Signup.js
 src/styles/Login.css
 src/styles/Profile.css
 src/styles/Signup.css
+src/components/Orders.js

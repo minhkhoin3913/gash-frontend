@@ -361,7 +361,7 @@
 }
 
 /* Responsive design */
-@media (max-width: 850px) {
+@media (max-width: 768px) {
   :root {
     --navbar-height: var(--navbar-height-responsive);
   }
@@ -415,53 +415,6 @@
 
   .footer-column a {
     margin-bottom: 6px;
-  }
-}
-
-@media (max-width: 480px) {
-  .navbar-container {
-    padding: 8px;
-  }
-
-  .logo img {
-    height: 20px;
-  }
-
-  .nav-button {
-    font-size: 0.8rem;
-    padding: 6px 8px;
-  }
-
-  .search-bar input {
-    padding: 8px 10px;
-    font-size: 0.9rem;
-  }
-
-  .search-button {
-    padding: 6px 10px;
-    font-size: 0.9rem;
-  }
-
-  .dropdown {
-    min-width: 150px;
-    right: -10px;
-  }
-
-  .dropdown-item {
-    padding: 10px 15px;
-    font-size: 0.85rem;
-  }
-
-  .footer-column {
-    padding: 10px 0;
-  }
-
-  .footer-column h4 {
-    font-size: 0.9rem;
-  }
-
-  .footer-column a {
-    font-size: 0.8rem;
   }
 }
 

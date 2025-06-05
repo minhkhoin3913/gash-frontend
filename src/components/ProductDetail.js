@@ -22,8 +22,8 @@ const useLocalStorage = (key, defaultValue) => {
 
   const setStoredValue = useCallback((newValue) => {
     try {
-      setValue(newValue);
-      window.localStorage.setItem(key, JSON.stringify(newValue));
+    setValue(newValue);
+    window.localStorage.setItem(key, JSON.stringify(newValue));
     } catch (error) {
       console.warn(`Error setting localStorage key "${key}":`, error);
     }
@@ -32,12 +32,25 @@ const useLocalStorage = (key, defaultValue) => {
   return [value, setStoredValue];
 };
 
-// API functions
+// API client with interceptors
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    const status = error.response?.status;
+    const message = status === 401 ? "Unauthorized access - please log in" :
+                    status === 404 ? "Resource not found" :
+                    status >= 500 ? "Server error - please try again later" :
+                    "Network error - please check your connection";
+    return Promise.reject({ ...error, message });
+  }
+);
+
+// API functions
 const fetchWithRetry = async (url, retries = 3, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -66,11 +79,12 @@ const ProductDetail = () => {
   const [availableColors, setAvailableColors] = useState([]);
   const [availableSizes, setAvailableSizes] = useState([]);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // Local storage for user preferences
   const [storedState, setStoredState] = useLocalStorage(DETAIL_STORAGE_KEY, {});
 
-  // Data fetching functions
+  // Data fetching
   const fetchProductAndVariants = useCallback(async () => {
     if (!id) {
       setError("Product ID is required");
@@ -93,7 +107,7 @@ const ProductDetail = () => {
       setProduct(productResponse);
       setVariants(variantsResponse || []);
 
-      // Extract unique colors with better validation
+      // Extract unique colors
       const uniqueColors = [
         ...new Set(
           (variantsResponse || [])
@@ -127,68 +141,14 @@ const ProductDetail = () => {
 
       setIsVariantSelected(false);
     } catch (err) {
-      // Fallback attempt
-      try {
-        const [productResponse, allVariantsResponse] = await Promise.all([
-          fetchWithRetry(`/products/${id}`),
-          fetchWithRetry("/variants"),
-        ]);
-
-        setProduct(productResponse);
-        const productVariants = (allVariantsResponse || []).filter(
-          (variant) => variant.pro_id?._id === id
-        );
-        
-        setVariants(productVariants);
-
-        const uniqueColors = [
-          ...new Set(
-            productVariants
-              .map((variant) => variant.color_id?.color_name)
-              .filter(Boolean)
-          ),
-        ].sort();
-
-        setAvailableColors(uniqueColors);
-
-        if (uniqueColors.length > 0) {
-          const defaultColor = storedState[id]?.selectedColor || uniqueColors[0];
-          setSelectedColor(defaultColor);
-          
-          const filteredVariants = productVariants.filter(
-            (variant) => variant.color_id?.color_name === defaultColor
-          );
-          
-          setAvailableSizes(
-            [...new Set(
-              filteredVariants
-                .map((variant) => variant.size_id?.size_name)
-                .filter(Boolean)
-            )].sort()
-          );
-          
-          setSelectedVariant(filteredVariants[0] || null);
-        }
-
-        setIsVariantSelected(false);
-      } catch (fallbackErr) {
-        const errorMessage = fallbackErr.code === 'ECONNABORTED'
-          ? "Request timeout - please check your connection"
-          : fallbackErr.response?.status === 404
-          ? "Product not found"
-          : fallbackErr.response?.status >= 500
-          ? "Server error - please try again later"
-          : "Failed to fetch product details";
-        
-        setError(errorMessage);
-        console.error("Error fetching product:", fallbackErr);
-      }
+      setError(err.message || "Failed to fetch product details");
+      console.error("Error fetching product:", err);
     } finally {
       setLoading(false);
     }
   }, [id, storedState]);
 
-  // Effect for initial data fetch
+  // Initial data fetch
   useEffect(() => {
     fetchProductAndVariants();
   }, [fetchProductAndVariants]);
@@ -219,7 +179,6 @@ const ProductDetail = () => {
     setSelectedVariant(filteredVariants[0] || null);
     setIsVariantSelected(true);
 
-    // Store user preference
     setStoredState(prev => ({
       ...prev,
       [id]: { ...prev[id], selectedColor: color }
@@ -270,21 +229,37 @@ const ProductDetail = () => {
         },
       });
 
-      // Success feedback
-      alert("Item added to cart successfully!");
+      setToast({ type: 'success', message: "Item added to cart successfully!" });
+      setTimeout(() => setToast(null), 3000);
     } catch (err) {
-      console.error("Add to cart error:", err.response || err);
-      const errorMessage = err.response?.status === 401
-        ? "Please log in to add items to cart"
-        : err.response?.status === 400
-        ? "Invalid product selection"
-        : err.response?.data?.message || "Failed to add item to cart";
-      
+      const errorMessage = err.message || "Failed to add item to cart";
       setError(errorMessage);
+      setToast({ type: 'error', message: errorMessage });
+      setTimeout(() => setToast(null), 3000);
+      console.error("Add to cart error:", err);
     } finally {
       setIsAddingToCart(false);
     }
   }, [user, selectedVariant, product, navigate, isInStock]);
+
+  const handleBuyNow = useCallback(() => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    if (!selectedVariant) {
+      setError("Please select a variant");
+      return;
+    }
+
+    if (!isInStock) {
+      setError("Product is out of stock");
+      return;
+    }
+
+    navigate("/checkout");
+  }, [user, selectedVariant, isInStock, navigate]);
 
   const handleRetry = useCallback(() => {
     fetchProductAndVariants();
@@ -300,7 +275,7 @@ const ProductDetail = () => {
     return [...Array(5)].map((_, i) => (
       <span
         key={i}
-        className={`product-detail-star ${i < rating ? 'filled' : 'empty'}`}
+        className={`product-detail-star ${i < Math.round(rating) ? 'filled' : 'empty'}`}
       >
         ★
       </span>
@@ -330,6 +305,7 @@ const ProductDetail = () => {
             className="product-detail-retry-button" 
             onClick={handleRetry}
             type="button"
+            aria-label="Retry loading product"
           >
             Retry
           </button>
@@ -350,8 +326,18 @@ const ProductDetail = () => {
 
   return (
     <div className="product-detail-container">
+      {/* Toast Notification */}
+      {toast && (
+        <div 
+          className={`product-detail-toast ${toast.type === 'success' ? 'product-detail-toast-success' : 'product-detail-toast-error'}`}
+          role="alert"
+        >
+          {toast.message}
+        </div>
+      )}
+
       {/* Breadcrumb */}
-      <nav className="product-detail-breadcrumb">
+      {/* <nav className="product-detail-breadcrumb" aria-label="Breadcrumb">
         <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
           Home
         </a>
@@ -361,7 +347,7 @@ const ProductDetail = () => {
         </a>
         {' > '}
         <span>{product.pro_name || 'Product'}</span>
-      </nav>
+      </nav> */}
 
       {/* Error display */}
       {error && (
@@ -389,6 +375,10 @@ const ProductDetail = () => {
             <img 
               src={product.imageURL || '/placeholder-image.png'} 
               alt={product.pro_name || 'Product'} 
+              onError={(e) => {
+                e.target.src = '/placeholder-image.png';
+                e.target.alt = 'Image not available';
+              }}
             />
           </div>
         </div>
@@ -397,12 +387,12 @@ const ProductDetail = () => {
         <div className="product-detail-info">
           <h1>{product.pro_name || 'Unnamed Product'}</h1>
           
-          <div className="product-detail-rating">
+          {/* <div className="product-detail-rating" role="img" aria-label={`${product.rating || 0} out of 5 stars`}>
             {renderStarRating(product.rating || 4)}
             <span className="product-detail-review-count">
               ({product.reviewCount || 0} reviews)
             </span>
-          </div>
+          </div> */}
 
           <div className="product-detail-price">
             {formatPrice(product.pro_price)}
@@ -417,68 +407,69 @@ const ProductDetail = () => {
           {/* Variants Selection */}
           <div className="product-detail-variants">
             {availableColors.length > 0 && (
-              <div className="product-detail-color-section">
-                <label><strong>Color:</strong></label>
+              <fieldset className="product-detail-color-section">
+                <legend><strong>Color:</strong></legend>
                 <div className="product-detail-color-buttons">
                   {availableColors.map((color) => (
                     <button
                       key={color}
-                      className={`product-detail-color-button ${
-                        selectedColor === color ? 'selected' : ''
-                      }`}
+                      className={`product-detail-color-button ${selectedColor === color ? 'selected' : ''}`}
                       onClick={() => handleColorClick(color)}
                       type="button"
+                      aria-label={`Select ${color} color`}
                     >
                       {color}
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
             )}
 
             {availableSizes.length > 0 && (
-              <div className="product-detail-size-section">
-                <label><strong>Size:</strong></label>
+              <fieldset className="product-detail-size-section">
+                <legend><strong>Size:</strong></legend>
                 <div className="product-detail-size-buttons">
                   {availableSizes.map((size) => (
                     <button
                       key={size}
-                      className={`product-detail-size-button ${
-                        selectedVariant?.size_id?.size_name === size ? 'selected' : ''
-                      }`}
+                      className={`product-detail-size-button ${selectedVariant?.size_id?.size_name === size ? 'selected' : ''}`}
                       onClick={() => handleSizeClick(size)}
                       type="button"
+                      aria-label={`Select ${size} size`}
                     >
                       {size}
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
             )}
           </div>
-        </div>
 
-        {/* Actions Section */}
-        <div className="product-detail-actions">
-          <button
-            className="product-detail-add-to-cart"
-            onClick={handleAddToCart}
-            disabled={!selectedVariant || !isInStock || isAddingToCart}
-            type="button"
-          >
-            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
-          </button>
-          
-          <button
-            className="product-detail-buy-now"
-            disabled={!selectedVariant || !isInStock}
-            type="button"
-          >
-            Buy Now
-          </button>
+          {/* Actions Section */}
+          <div className="product-detail-actions">
+            <button
+              className="product-detail-add-to-cart"
+              onClick={handleAddToCart}
+              disabled={!selectedVariant || !isInStock || isAddingToCart}
+              type="button"
+              aria-label="Add to cart"
+            >
+              {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+            </button>
+            
+            <button
+              className="product-detail-buy-now"
+              onClick={handleBuyNow}
+              disabled={!selectedVariant || !isInStock}
+              type="button"
+              aria-label="Buy now"
+            >
+              Buy Now
+            </button>
 
-          <div className="product-detail-shipping">
-            <strong>FREE delivery</strong> by tomorrow
+            <div className="product-detail-shipping">
+              <strong>FREE delivery</strong> by tomorrow
+            </div>
           </div>
         </div>
       </div>
