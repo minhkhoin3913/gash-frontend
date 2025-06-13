@@ -25,6 +25,10 @@
   min-height: 100vh;
 }
 
+.checkout-container > * {
+  margin: 16px 0;
+}
+
 /* Title */
 .checkout-title {
   font-size: 1.5rem;
@@ -252,6 +256,10 @@
   margin-bottom: 16px;
 }
 
+.checkout-form-group > *{
+  margin: 16px;
+}
+
 .checkout-form-label {
   font-size: 0.875rem;
   color: var(--amazon-text);
@@ -262,7 +270,7 @@
 .checkout-form-input,
 .checkout-form-select {
   width: 100%;
-  padding: 8px 0;
+  padding: 8px;
   border: 1px solid var(--amazon-border);
   border-radius: 3px;
   font-size: 0.875rem;

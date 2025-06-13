@@ -147,7 +147,7 @@ const Checkout = () => {
       await Promise.all(
         cartItems.map(async (item) => {
           await apiClient.post(
-            '/orderdetails',
+            '/order-details',
             {
               order_id: orderId,
               variant_id: item.variant_id?._id,
