@@ -22,8 +22,8 @@ const useLocalStorage = (key, defaultValue) => {
 
   const setStoredValue = useCallback((newValue) => {
     try {
-    setValue(newValue);
-    window.localStorage.setItem(key, JSON.stringify(newValue));
+      setValue(newValue);
+      window.localStorage.setItem(key, JSON.stringify(newValue));
     } catch (error) {
       console.warn(`Error setting localStorage key "${key}":`, error);
     }
@@ -46,15 +46,15 @@ apiClient.interceptors.response.use(
                     status === 404 ? "Resource not found" :
                     status >= 500 ? "Server error - please try again later" :
                     "Network error - please check your connection";
-    return Promise.reject({ ...error, message });
+    return Promise.reject({ ...error, message, status });
   }
 );
 
 // API functions
-const fetchWithRetry = async (url, retries = 3, delay = 1000) => {
+const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await apiClient.get(url);
+      const response = await apiClient(url, options);
       return response.data;
     } catch (error) {
       if (i === retries - 1) throw error;
@@ -79,12 +79,16 @@ const ProductDetail = () => {
   const [availableColors, setAvailableColors] = useState([]);
   const [availableSizes, setAvailableSizes] = useState([]);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isAddingToFavorites, setIsAddingToFavorites] = useState(false);
   const [toast, setToast] = useState(null);
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState(null);
 
   // Local storage for user preferences
   const [storedState, setStoredState] = useLocalStorage(DETAIL_STORAGE_KEY, {});
 
-  // Data fetching
+  // Data fetching for product and variants
   const fetchProductAndVariants = useCallback(async () => {
     if (!id) {
       setError("Product ID is required");
@@ -148,10 +152,33 @@ const ProductDetail = () => {
     }
   }, [id, storedState]);
 
+  // Data fetching for feedbacks
+  const fetchFeedbacks = useCallback(async () => {
+    setFeedbackLoading(true);
+    setFeedbackError(null);
+
+    try {
+      const feedbackResponse = await fetchWithRetry(`/order-details/product/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setFeedbacks(feedbackResponse || []);
+    } catch (err) {
+      if (err.status === 404) {
+        setFeedbacks([]); // Treat 404 as no feedback available
+      } else {
+        setFeedbackError(err.message || "Failed to fetch feedback");
+        console.error("Error fetching feedbacks:", err);
+      }
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, [id]);
+
   // Initial data fetch
   useEffect(() => {
     fetchProductAndVariants();
-  }, [fetchProductAndVariants]);
+    fetchFeedbacks();
+  }, [fetchProductAndVariants, fetchFeedbacks]);
 
   // Memoized computed values
   const isInStock = useMemo(() => {
@@ -242,6 +269,43 @@ const ProductDetail = () => {
     }
   }, [user, selectedVariant, product, navigate, isInStock]);
 
+  const handleAddToFavorites = useCallback(async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    setIsAddingToFavorites(true);
+    setError(null);
+
+    try {
+      const favoriteItem = {
+        acc_id: user._id,
+        pro_id: id,
+      };
+
+      await apiClient.post("/favorites", favoriteItem, {
+        headers: { 
+          Authorization: `Bearer ${localStorage.getItem("token")}` 
+        },
+      });
+
+      setToast({ type: 'success', message: "Product added to favorites successfully!" });
+      setTimeout(() => {
+        setToast(null);
+        navigate("/favorites");
+      }, 2000);
+    } catch (err) {
+      const errorMessage = err.message || "Failed to add to favorites";
+      setError(errorMessage);
+      setToast({ type: 'error', message: errorMessage });
+      setTimeout(() => setToast(null), 3000);
+      console.error("Add to favorites error:", err);
+    } finally {
+      setIsAddingToFavorites(false);
+    }
+  }, [user, id, navigate]);
+
   const handleBuyNow = useCallback(() => {
     if (!user) {
       navigate("/login");
@@ -263,7 +327,8 @@ const ProductDetail = () => {
 
   const handleRetry = useCallback(() => {
     fetchProductAndVariants();
-  }, [fetchProductAndVariants]);
+    fetchFeedbacks();
+  }, [fetchProductAndVariants, fetchFeedbacks]);
 
   // Helper functions
   const formatPrice = useCallback((price) => {
@@ -280,6 +345,18 @@ const ProductDetail = () => {
         ★
       </span>
     ));
+  }, []);
+
+  const formatDate = useCallback((dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return "Unknown Date";
+    }
   }, []);
 
   // Loading state
@@ -315,13 +392,7 @@ const ProductDetail = () => {
   }
 
   if (!product) {
-    return (
-      <div className="product-detail-container">
-        <div className="product-detail-error">
-          <span>Product not found</span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -330,24 +401,10 @@ const ProductDetail = () => {
       {toast && (
         <div 
           className={`product-detail-toast ${toast.type === 'success' ? 'product-detail-toast-success' : 'product-detail-toast-error'}`}
-          role="alert"
-        >
-          {toast.message}
+          role="alert">
+            {toast.message}
         </div>
       )}
-
-      {/* Breadcrumb */}
-      {/* <nav className="product-detail-breadcrumb" aria-label="Breadcrumb">
-        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
-          Home
-        </a>
-        {' > '}
-        <a href="/products" onClick={(e) => { e.preventDefault(); navigate('/products'); }}>
-          Products
-        </a>
-        {' > '}
-        <span>{product.pro_name || 'Product'}</span>
-      </nav> */}
 
       {/* Error display */}
       {error && (
@@ -387,13 +444,6 @@ const ProductDetail = () => {
         <div className="product-detail-info">
           <h1>{product.pro_name || 'Unnamed Product'}</h1>
           
-          {/* <div className="product-detail-rating" role="img" aria-label={`${product.rating || 0} out of 5 stars`}>
-            {renderStarRating(product.rating || 4)}
-            <span className="product-detail-review-count">
-              ({product.reviewCount || 0} reviews)
-            </span>
-          </div> */}
-
           <div className="product-detail-price">
             {formatPrice(product.pro_price)}
           </div>
@@ -444,31 +494,49 @@ const ProductDetail = () => {
               </fieldset>
             )}
           </div>
+        </div>
 
-          {/* Actions Section */}
-          <div className="product-detail-actions">
-            <button
-              className="product-detail-add-to-cart"
-              onClick={handleAddToCart}
-              disabled={!selectedVariant || !isInStock || isAddingToCart}
-              type="button"
-              aria-label="Add to cart"
-            >
-              {isAddingToCart ? 'Adding...' : 'Add to Cart'}
-            </button>
-            
-            <button
-              className="product-detail-buy-now"
-              onClick={handleBuyNow}
-              disabled={!selectedVariant || !isInStock}
-              type="button"
-              aria-label="Buy now"
-            >
-              Buy Now
-            </button>
+        {/* Product Actions Section */}
+        <div className="product-detail-actions-section">
+          <button
+            className="product-detail-add-to-favorites"
+            onClick={handleAddToFavorites}
+            disabled={isAddingToFavorites}
+            type="button"
+            aria-label="Add to favorites"
+          >
+            {isAddingToFavorites ? 'Adding...' : 'Add to Favorites'}
+          </button>
+          
+          <button
+            className="product-detail-add-to-cart"
+            onClick={handleAddToCart}
+            disabled={!selectedVariant || !isInStock || isAddingToCart}
+            type="button"
+            aria-label="Add to cart"
+          >
+            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+          </button>
+          
+          <button
+            className="product-detail-buy-now"
+            onClick={handleBuyNow}
+            disabled={!selectedVariant || !isInStock}
+            type="button"
+            aria-label="Buy now"
+          >
+            Buy Now
+          </button>
 
-            <div className="product-detail-shipping">
+          <div className="product-detail-shipping" aria-label="Shipping and return information">
+            <div className="product-detail-shipping-delivery">
               <strong>FREE delivery</strong> by tomorrow
+            </div>
+            <div className="product-detail-shipping-deliver">
+              <strong>Deliver to</strong> United States
+            </div>
+            <div className="product-detail-shipping-returns">
+              <strong>Return Policy:</strong> 30-day returns. Free returns on eligible orders.
             </div>
           </div>
         </div>
@@ -481,6 +549,56 @@ const ProductDetail = () => {
           <div dangerouslySetInnerHTML={{ __html: product.description }} />
         </div>
       )}
+
+      {/* Feedback Section */}
+      <div className="product-detail-feedback">
+        <h2>Customer Feedback</h2>
+        {feedbackLoading && (
+          <div className="product-detail-feedback-loading">
+            <div className="product-detail-loading-spinner"></div>
+            <p>Loading feedback...</p>
+          </div>
+        )}
+        {feedbackError && (
+          <div className="product-detail-feedback-error">
+            <span className="product-detail-error-icon">⚠</span>
+            <span>{feedbackError}</span>
+            <button 
+              className="product-detail-retry-button" 
+              onClick={fetchFeedbacks}
+              type="button"
+              aria-label="Retry loading feedback"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!feedbackLoading && !feedbackError && feedbacks.length === 0 && (
+          <p className="product-detail-feedback-empty">No Feedbacks Yet</p>
+        )}
+        {!feedbackLoading && !feedbackError && feedbacks.length > 0 && (
+          <div className="product-detail-feedback-list">
+            {feedbacks.map((feedback) => (
+              <div key={feedback._id} className="product-detail-feedback-item">
+                <div className="product-detail-feedback-header">
+                  <span className="product-detail-feedback-username">
+                    {feedback.order_id?.acc_id?.username || "Anonymous"}
+                  </span>
+                  <span className="product-detail-feedback-date">
+                    {formatDate(feedback.order_id?.orderDate)}
+                  </span>
+                </div>
+                <div className="product-detail-feedback-details">
+                  <p><strong>Product:</strong> {feedback.variant_id?.pro_id?.pro_name || "N/A"}</p>
+                  <p><strong>Color:</strong> {feedback.variant_id?.color_id?.color_name || "N/A"}</p>
+                  <p><strong>Size:</strong> {feedback.variant_id?.size_id?.size_name || "N/A"}</p>
+                </div>
+                <p className="product-detail-feedback-text">{feedback.feedback_details}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
