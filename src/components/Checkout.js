@@ -240,7 +240,7 @@ const Checkout = () => {
             <p>Your cart is empty.</p>
             <button 
               className="checkout-continue-shopping-button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/products')}
               aria-label="Continue shopping"
             >
               Continue Shopping
