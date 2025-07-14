@@ -1,0 +1,248 @@
+:root {
+  --amazon-primary: #f0c14b;
+  --amazon-dark: #131921;
+  --amazon-text: #0f1111;
+  --amazon-error: #b12704;
+  --amazon-success: #007600;
+  --amazon-border: #d5d9d9;
+  --amazon-bg: #fff;
+  --amazon-secondary-bg: #f7fafa;
+  --amazon-secondary-text: #565959;
+  --amazon-link: #007185;
+  --amazon-focus: #007185;
+  --transition-fast: 0.2s ease;
+  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.signup-container {
+  background-color: var(--amazon-bg);
+  min-height: calc(100vh - 64px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.signup-box {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  background-color: var(--amazon-bg);
+  border: 2px solid var(--amazon-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-light);
+}
+
+.signup-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.signup-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border: 2px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.signup-error-icon {
+  font-size: 1.125rem;
+}
+
+.signup-resend-link {
+  color: var(--amazon-link);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.signup-resend-link:hover:not(:disabled) {
+  color: #c45500;
+  text-decoration: underline;
+}
+
+.signup-resend-link:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.signup-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-form-group {
+  margin-bottom: 16px;
+}
+
+.signup-form-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.signup-required-indicator {
+  color: var(--amazon-error);
+}
+
+.signup-form-input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid var(--amazon-border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  background-color: var(--amazon-bg);
+  transition: var(--transition-fast);
+}
+
+.signup-form-input:focus {
+  outline: 2px solid var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+
+.signup-form-input::placeholder {
+  color: var(--amazon-secondary-text);
+  opacity: 0.7;
+}
+
+.signup-continue-button {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--amazon-primary);
+  border: 2px solid #c89411;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.signup-continue-button:hover:not(:disabled) {
+  background-color: #f7ca00;
+  border-color: #c89411;
+}
+
+.signup-continue-button:disabled {
+  background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+
+.signup-continue-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.signup-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #e9ecef;
+  border-top-color: var(--amazon-text);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.signup-login-prompt {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  margin-top: 24px;
+}
+
+.signup-login-link {
+  color: var(--amazon-link);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.signup-login-link:hover {
+  color: #c45500;
+  text-decoration: underline;
+}
+
+.signup-login-link:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .signup-container {
+    padding: 12px;
+  }
+  .signup-box {
+    padding: 16px;
+  }
+  .signup-title {
+    font-size: 1.4rem;
+  }
+  .signup-form-input,
+  .signup-continue-button {
+    font-size: 0.8125rem;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .signup-box {
+    max-width: 100%;
+  }
+  .signup-title {
+    font-size: 1.25rem;
+  }
+  .signup-error {
+    font-size: 0.8125rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signup-form-input,
+  .signup-continue-button,
+  .signup-login-link,
+  .signup-resend-link {
+    transition: none;
+  }
+  .signup-loading-spinner {
+    animation: none;
+    border: 3px solid var(--amazon-text);
+  }
+}
+
+@media (prefers-contrast: high) {
+  .signup-box,
+  .signup-form-input,
+  .signup-continue-button {
+    border-width: 2px;
+  }
+  .signup-form-input:focus {
+    outline: 3px solid var(--amazon-focus);
+  }
+  .signup-continue-button,
+  .signup-login-link,
+  .signup-resend-link {
+    font-weight: 700;
+  }
+}

@@ -147,7 +147,7 @@ const Checkout = () => {
       await Promise.all(
         cartItems.map(async (item) => {
           await apiClient.post(
-            '/orderdetails',
+            '/order-details',
             {
               order_id: orderId,
               variant_id: item.variant_id?._id,
@@ -227,113 +227,112 @@ const Checkout = () => {
         </div>
       )}
 
-      {/* Cart Summary */}
-      <div className="checkout-cart-summary">
-        <h2 className="checkout-cart-title">Cart Summary</h2>
-        {loading ? (
-          <div className="checkout-loading" role="status" aria-live="true">
-            <div className="checkout-loading-spinner"></div>
-            <p>Loading cart...</p>
-          </div>
-        ) : cartItems.length === 0 ? (
-          <div className="checkout-empty-cart" role="status">
-            <p>Your cart is empty.</p>
-            <button 
-              className="checkout-continue-shopping-button"
-              onClick={() => navigate('/')}
-              aria-label="Continue shopping"
-            >
-              Continue Shopping
-            </button>
-          </div>
-        ) : (
-          <div className="checkout-cart-items">
-            {cartItems.map((item) => (
-              <div key={item._id} className="checkout-cart-item">
-                <div className="checkout-item-info">
-                  <p className="checkout-item-name">
-                    {item.variant_id?.pro_id?.pro_name || 'Unnamed Product'}
-                  </p>
-                  <p className="checkout-item-variant">
-                    Color: {item.variant_id?.color_id?.color_name || 'N/A'}, 
-                    Size: {item.variant_id?.size_id?.size_name || 'N/A'}
-                  </p>
-                  <p className="checkout-item-quantity">Quantity: {item.pro_quantity || 0}</p>
-                  <p className="checkout-item-price">Price: {formatPrice(item.pro_price)}</p>
-                </div>
-                <p className="checkout-item-total">
-                  {formatPrice((item.pro_price || 0) * (item.pro_quantity || 0))}
-                </p>
-              </div>
-            ))}
-            <div className="checkout-cart-total">
-              <p>Total: {formatPrice(totalPrice)}</p>
+      <div className="checkout-main-section">
+        <div className="checkout-cart-summary">
+          <h2 className="checkout-cart-title">Cart Summary</h2>
+          {loading ? (
+            <div className="checkout-loading" role="status" aria-live="true">
+              <div className="checkout-loading-spinner"></div>
+              <p>Loading cart...</p>
             </div>
-          </div>
+          ) : cartItems.length === 0 ? (
+            <div className="checkout-empty-cart" role="status">
+              <p>Your cart is empty.</p>
+              <button 
+                className="checkout-continue-shopping-button"
+                onClick={() => navigate('/')}
+                aria-label="Continue shopping"
+              >
+                Continue Shopping
+              </button>
+            </div>
+          ) : (
+            <div className="checkout-cart-items">
+              {cartItems.map((item) => (
+                <div key={item._id} className="checkout-cart-item">
+                  <div className="checkout-item-info">
+                    <p className="checkout-item-name">
+                      {item.variant_id?.pro_id?.pro_name || 'Unnamed Product'}
+                    </p>
+                    <p className="checkout-item-variant">
+                      Color: {item.variant_id?.color_id?.color_name || 'N/A'}, 
+                      Size: {item.variant_id?.size_id?.size_name || 'N/A'}
+                    </p>
+                    <p className="checkout-item-quantity">Quantity: {item.pro_quantity || 0}</p>
+                    <p className="checkout-item-price">Price: {formatPrice(item.pro_price)}</p>
+                  </div>
+                  <p className="checkout-item-total">
+                    {formatPrice((item.pro_price || 0) * (item.pro_quantity || 0))}
+                  </p>
+                </div>
+              ))}
+              <div className="checkout-cart-total">
+                <p>Total: {formatPrice(totalPrice)}</p>
+              </div>
+            </div>
+          )}
+        </div>
+        {!loading && cartItems.length > 0 && (
+          <form onSubmit={handlePlaceOrder} className="checkout-form">
+            <fieldset className="checkout-form-group">
+              <legend className="checkout-form-title">Shipping Information</legend>
+              <div className="checkout-form-field">
+                <label htmlFor="username" className="checkout-form-label">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  className="checkout-form-input"
+                  required
+                  aria-describedby="username-description"
+                />
+              </div>
+              <div className="checkout-form-field">
+                <label htmlFor="addressReceive" className="checkout-form-label">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  id="addressReceive"
+                  name="addressReceive"
+                  value={formData.addressReceive}
+                  onChange={handleInputChange}
+                  className="checkout-form-input"
+                  required
+                  aria-describedby="address-description"
+                />
+              </div>
+              <div className="checkout-form-field">
+                <label htmlFor="phone" className="checkout-form-label">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="checkout-form-input"
+                  required
+                  aria-describedby="phone-description"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="checkout-place-order-button"
+                aria-label="Place order"
+              >
+                {loading ? 'Placing Order...' : 'Place Order'}
+              </button>
+            </fieldset>
+          </form>
         )}
       </div>
-
-      {/* Order Form */}
-      {!loading && cartItems.length > 0 && (
-        <form onSubmit={handlePlaceOrder} className="checkout-form">
-          <fieldset className="checkout-form-group">
-            <legend className="checkout-form-title">Shipping Information</legend>
-            <div className="checkout-form-field">
-              <label htmlFor="username" className="checkout-form-label">
-                Username
-              </label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                className="checkout-form-input"
-                required
-                aria-describedby="username-description"
-              />
-            </div>
-            <div className="checkout-form-field">
-              <label htmlFor="addressReceive" className="checkout-form-label">
-                Address
-              </label>
-              <input
-                type="text"
-                id="addressReceive"
-                name="addressReceive"
-                value={formData.addressReceive}
-                onChange={handleInputChange}
-                className="checkout-form-input"
-                required
-                aria-describedby="address-description"
-              />
-            </div>
-            <div className="checkout-form-field">
-              <label htmlFor="phone" className="checkout-form-label">
-                Phone
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className="checkout-form-input"
-                required
-                aria-describedby="phone-description"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="checkout-place-order-button"
-              aria-label="Place order"
-            >
-              {loading ? 'Placing Order...' : 'Place Order'}
-            </button>
-          </fieldset>
-        </form>
-      )}
     </div>
   );
 };

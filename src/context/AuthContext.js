@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // Simple session expiration handler
   const handleSessionExpired = () => {
     alert('Your session has expired. You will be logged out.');
     localStorage.removeItem('token');
@@ -18,7 +17,6 @@ export const AuthProvider = ({ children }) => {
     navigate('/login');
   };
 
-  // Check session on app load and set up timer
   useEffect(() => {
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
@@ -26,17 +24,14 @@ export const AuthProvider = ({ children }) => {
 
     if (token && storedUser && loginTime) {
       const currentTime = Date.now();
-      const sessionDuration = 60 * 60 * 1000; // 1 hour in milliseconds
+      const sessionDuration = 24 * 60 * 60 * 1000; // 1 day
       const timeElapsed = currentTime - parseInt(loginTime);
 
       if (timeElapsed >= sessionDuration) {
-        // Session already expired
         handleSessionExpired();
       } else {
-        // Session still valid, set user and create timer for remaining time
         setUser(JSON.parse(storedUser));
         const remainingTime = sessionDuration - timeElapsed;
-        
         setTimeout(() => {
           handleSessionExpired();
         }, remainingTime);
@@ -44,7 +39,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Add axios interceptor for 401 responses
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
@@ -72,40 +66,115 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(account));
       localStorage.setItem('loginTime', loginTime);
-      
       setUser(account);
 
-      // Set 1-hour timer for auto logout
       setTimeout(() => {
         handleSessionExpired();
-      }, 60 * 60 * 1000); // 1 hour
+      }, 24 * 60 * 60 * 1000); // 1 day
 
       navigate('/');
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Login failed');
+      throw error;
     }
   };
 
-  const signup = async (userData) => {
+  const googleLogin = async (token) => {
     try {
-      const response = await axios.post('http://localhost:5000/auth/register', userData);
+      const response = await axios.post('http://localhost:5000/auth/google-login', {
+        token,
+      });
+
+      const { token: jwtToken, account } = response.data;
+      const loginTime = Date.now().toString();
+
+      localStorage.setItem('token', jwtToken);
+      localStorage.setItem('user', JSON.stringify(account));
+      localStorage.setItem('loginTime', loginTime);
+      setUser(account);
+
+      setTimeout(() => {
+        handleSessionExpired();
+      }, 24 * 60 * 60 * 1000); // 1 day
+
+      navigate('/');
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const requestSignupOTP = async (email, type = 'register') => {
+    try {
+      const endpoint =
+        type === 'register'
+          ? 'http://localhost:5000/auth/register/request-otp'
+          : 'http://localhost:5000/auth/forgot-password/request-otp';
+      const response = await axios.post(endpoint, { email });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const verifyOTP = async (email, otp, formData, type, resend = false) => {
+    try {
+      if (resend) {
+        const endpoint =
+          type === 'register'
+            ? 'http://localhost:5000/auth/register/request-otp'
+            : 'http://localhost:5000/auth/forgot-password/request-otp';
+        const response = await axios.post(endpoint, { email });
+        return response;
+      }
+
+      if (type === 'register') {
+        const response = await axios.post('http://localhost:5000/auth/register/verify-otp', {
+          email,
+          otp,
+        });
+        return response;
+      } else if (type === 'forgot-password') {
+        const response = await axios.post('http://localhost:5000/auth/forgot-password/verify-otp', {
+          email,
+          otp,
+        });
+        return response;
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const signup = async (formData) => {
+    try {
+      const response = await axios.post('http://localhost:5000/auth/register', {
+        ...formData,
+      });
       const { token, account } = response.data;
       const loginTime = Date.now().toString();
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(account));
       localStorage.setItem('loginTime', loginTime);
-      
       setUser(account);
 
-      // Set 1-hour timer for auto logout
       setTimeout(() => {
         handleSessionExpired();
-      }, 60 * 60 * 1000); // 1 hour
+      }, 24 * 60 * 60 * 1000); // 1 day
 
       navigate('/');
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Signup failed');
+      throw error;
+    }
+  };
+
+  const resetPassword = async ({ email, newPassword }) => {
+    try {
+      await axios.post('http://localhost:5000/auth/forgot-password/reset', {
+        email,
+        newPassword,
+      });
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -118,7 +187,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        googleLogin,
+        requestSignupOTP,
+        verifyOTP,
+        signup,
+        resetPassword,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

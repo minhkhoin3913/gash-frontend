@@ -1,0 +1,214 @@
+:root {
+  --amazon-primary: #f0c14b;
+  --amazon-dark: #131921;
+  --amazon-text: #0f1111;
+  --amazon-error: #b12704;
+  --amazon-success: #007600;
+  --amazon-border: #d5d9d9;
+  --amazon-bg: #fff;
+  --amazon-secondary-bg: #f7fafa;
+  --amazon-secondary-text: #565959;
+  --amazon-link: #007185;
+  --amazon-focus: #007185;
+  --transition-fast: 0.2s ease;
+  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.login-container {
+  background-color: var(--amazon-bg);
+  min-height: calc(100vh - 64px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  background-color: var(--amazon-bg);
+  border: 2px solid var(--amazon-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-light);
+}
+
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.login-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border: 2px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-error-icon {
+  font-size: 1.125rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-form-group {
+  margin-bottom: 16px;
+}
+
+.login-form-label {
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.login-required-indicator {
+  color: var(--amazon-error);
+}
+
+.login-form-input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid var(--amazon-border);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  transition: var(--transition-fast);
+}
+
+.login-forgot-password {
+  margin-bottom: 16px;
+  text-align: right;
+}
+
+.login-forgot-password-link {
+  font-size: 0.875rem;
+  color: var(--amazon-link);
+  text-decoration: none;
+}
+
+.login-forgot-password-link:hover {
+  color: #c45500;
+  text-decoration: underline;
+}
+
+.login-forgot-password-link:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.sign-in-button {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #c89411;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  transition: var(--transition-fast);
+}
+
+.login-form-input {
+  background-color: var(--amazon-bg);
+}
+
+.login-form-input:focus,
+.sign-in-button:focus {
+  outline: 2px solid var(--amazon-focus);
+}
+
+.sign-in-button {
+  background-color: var(--amazon-primary);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--amazon-text);
+}
+
+.sign-in-button:hover:not(:disabled) {
+  background-color: #f7ca00;
+  border-color: #c89411;
+}
+
+.sign-in-button:disabled {
+  background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+
+.login-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e9ecef;
+  border-top-color: var(--amazon-text);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 8px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.google-login-container {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.login-signup-prompt {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  margin-top: 24px;
+}
+
+.login-signup-link {
+  color: var(--amazon-link);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-signup-link:hover {
+  color: #c45500;
+  text-decoration: underline;
+}
+
+.login-signup-link:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .login-container { padding: 12px; }
+  .login-box { padding: 16px; }
+  .login-title { font-size: 1.4rem; }
+  .login-form-input, .sign-in-button { font-size: 0.8125rem; padding: 8px; }
+}
+
+@media (max-width: 480px) {
+  .login-box { max-width: 100%; }
+  .login-title { font-size: 1.25rem; }
+  .login-error { font-size: 0.8125rem; }
+  .google-login-container { transform: scale(0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-form-input, .sign-in-button, .login-signup-link { transition: none; }
+  .login-loading-spinner { animation: none; border: 3px solid var(--amazon-text); }
+}
+
+@media (prefers-contrast: high) {
+  .login-box, .login-form-input, .sign-in-button { border-width: 2px; }
+  .login-form-input:focus { outline: 3px solid var(--amazon-focus); }
+  .sign-in-button, .login-signup-link { font-weight: 700; }
+}
