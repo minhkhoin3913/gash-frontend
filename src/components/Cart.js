@@ -81,36 +81,36 @@ const Cart = () => {
 
   // Debounced quantity update
   const debouncedUpdateQuantity = useDebouncedCallback(async (itemId, newQuantity) => {
-    if (!user?._id || newQuantity < 1) return;
-    setLoading(true);
-    setError('');
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
-      const item = cartItems.find(item => item._id === itemId);
-      if (!item?.pro_price) throw new Error('Product price not available');
-      const response = await apiClient.put(
-        `/carts/${itemId}`,
-        { pro_quantity: newQuantity, pro_price: item.pro_price },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setCartItems(prev =>
-        prev.map(item =>
-          item._id === itemId
-            ? { ...item, pro_quantity: newQuantity, pro_price: response.data.cartItem.pro_price, Total_price: response.data.cartItem.Total_price }
-            : item
-        )
-      );
-      setToast({ type: 'success', message: 'Quantity updated successfully!' });
-      setTimeout(() => setToast(null), 3000);
-    } catch (err) {
-      const errorMessage = err.message || 'Failed to update quantity';
-      setError(errorMessage);
-      setToast({ type: 'error', message: errorMessage });
-      setTimeout(() => setToast(null), 3000);
-    } finally {
-      setLoading(false);
-    }
+  if (!user?._id || newQuantity < 1) return;
+  setLoading(true);
+  setError('');
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+    const item = cartItems.find(item => item._id === itemId);
+    if (!item?.pro_price) throw new Error('Product price not available');
+    const response = await apiClient.put(
+      `/carts/${itemId}`,
+      { pro_quantity: newQuantity, pro_price: item.pro_price },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setCartItems(prev =>
+      prev.map(item =>
+        item._id === itemId
+          ? { ...item, pro_quantity: newQuantity, pro_price: response.data.cartItem.pro_price, Total_price: response.data.cartItem.Total_price }
+          : item
+      )
+    );
+    setToast({ type: 'success', message: 'Quantity updated successfully!' });
+    setTimeout(() => setToast(null), 3000);
+  } catch (err) {
+    const errorMessage = err.message || 'Failed to update quantity';
+    setError(errorMessage);
+    setToast({ type: 'error', message: errorMessage });
+    setTimeout(() => setToast(null), 3000);
+  } finally {
+    setLoading(false);
+  }
   }, 500);
 
   // Remove item from cart
@@ -190,19 +190,19 @@ const Cart = () => {
         <div className="product-list-error" role="alert" tabIndex={0} aria-live="polite">
           <span className="product-list-error-icon" aria-hidden="true">⚠</span>
           {error}
-          <button
+            <button 
             className="product-list-retry-button"
-            onClick={handleRetry}
-            aria-label="Retry loading cart items"
-          >
-            Retry
-          </button>
+              onClick={handleRetry}
+              aria-label="Retry loading cart items"
+            >
+              Retry
+            </button>
         </div>
       )}
       {!loading && cartItems.length === 0 && !error ? (
         <div className="cart-empty" role="status">
           <p>Your cart is empty.</p>
-          <button
+          <button 
             className="cart-continue-shopping-button"
             onClick={() => navigate('/products')}
             aria-label="Continue shopping"
@@ -230,10 +230,6 @@ const Cart = () => {
                       className="cart-quantity-input"
                       aria-label={`Quantity for ${item.variant_id?.pro_id?.pro_name || 'product'}`}
                     />
-                  </div>
-                </div>
-                <div className="cart-item-actions">
-                  <p className="cart-item-total">{formatPrice((item.pro_price || 0) * (item.pro_quantity || 0))}</p>
                   <button
                     className="cart-remove-button"
                     onClick={() => handleRemoveItem(item._id)}
@@ -241,6 +237,8 @@ const Cart = () => {
                   >
                     Remove
                   </button>
+                  </div>
+                  <p className="cart-item-total">{formatPrice((item.pro_price || 0) * (item.pro_quantity || 0))}</p>
                 </div>
               </article>
             ))}

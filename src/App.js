@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import Home from "./components/Home";
 import ProductList from "./components/ProductList";
 import ProductDetail from "./components/ProductDetail";
 import Login from "./components/Login";
@@ -25,7 +26,8 @@ const App = () => {
         <AuthProvider>
           <Layout>
             <Routes>
-              <Route path="/" element={<ProductList />} />
+              <Route path="/" element={<Home />} />
+              <Route path="/product" element={<ProductList />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />

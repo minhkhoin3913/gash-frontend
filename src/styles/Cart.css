@@ -190,6 +190,8 @@
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-light);
+  box-sizing: border-box;
+  overflow-x: auto;
 }
 
 .cart-item {
@@ -205,6 +207,9 @@
 
 .cart-item-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .cart-item-name {
@@ -240,8 +245,8 @@
 }
 
 .cart-quantity-input {
-  width: 80px;
-  padding: 6px 12px;
+  width: 56px;
+  padding: 4px 8px;
   border: 2px solid var(--amazon-border);
   border-radius: 6px;
   font-size: 0.875rem;
@@ -275,9 +280,10 @@
 }
 
 .cart-item-total {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--amazon-text);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--amazon-error);
+  margin: 0 0 8px;
 }
 
 .cart-remove-button {
@@ -311,11 +317,16 @@
 
 /* Summary */
 .cart-summary {
+  flex: 1 1 0;
+  /* Remove max-width, min-width, and set to match .cart-items */
+  align-self: flex-start;
   background-color: var(--amazon-bg);
   border: 2px solid var(--amazon-border);
   padding: 16px;
   border-radius: 12px;
   box-shadow: var(--shadow-light);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .cart-total {
@@ -336,6 +347,7 @@
   font-weight: 600;
   color: var(--amazon-text);
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .cart-checkout-button:hover:not(:disabled) {
@@ -376,6 +388,9 @@
     border-radius: 10px;
     padding: 12px;
   }
+  .cart-items, .cart-summary {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
@@ -399,6 +414,9 @@
   .cart-items, .cart-summary, .cart-empty, .cart-error, .cart-loading {
     border-radius: 8px;
     padding: 8px;
+  }
+  .cart-items, .cart-summary {
+    width: 100%;
   }
 }
 
@@ -444,15 +462,21 @@
 }
 
 .cart-items {
-  flex: 2 1 0;
+  flex: 3 1 0;
   min-width: 0;
+  box-sizing: border-box;
+  overflow-x: auto;
 }
 
 .cart-summary {
-  flex: 1 1 320px;
-  max-width: 360px;
-  min-width: 240px;
+  /* flex: 1 1 0; */
+  /* Remove max-width, min-width, and set to match .cart-items */
   align-self: flex-start;
+  background-color: var(--amazon-bg);
+  border: 2px solid var(--amazon-border);
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-light);
 }
 
 @media (max-width: 992px) {
@@ -462,6 +486,7 @@
   .cart-summary {
     max-width: 100%;
     min-width: 0;
+    width: 100%;
   }
 }
 
