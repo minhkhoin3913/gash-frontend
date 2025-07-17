@@ -37,6 +37,80 @@ const useClickOutside = (ref, callback) => {
   }, [ref, callback]);
 };
 
+// Sub-navbar component
+const SubNavbar = () => {
+  const [categories, setCategories] = useState([]);
+  const [show, setShow] = useState(true);
+  const lastScrollY = useRef(window.scrollY);
+
+  useEffect(() => {
+    // Fetch up to 5 categories
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/categories`);
+        setCategories(Array.isArray(res.data) ? res.data.slice(0, 5) : []);
+      } catch {
+        setCategories([]);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY < 10) {
+        setShow(true);
+        lastScrollY.current = window.scrollY;
+        return;
+      }
+      if (window.scrollY > lastScrollY.current) {
+        setShow(false); // Scrolling down
+      } else {
+        setShow(true); // Scrolling up
+      }
+      lastScrollY.current = window.scrollY;
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <div
+      className={`sub-navbar${show ? '' : ' sub-navbar-hidden'}`}
+      style={{
+        position: 'sticky',
+        top: '80px',
+        zIndex: 999,
+        background: 'var(--amazon-bg)',
+        borderBottom: '1px solid var(--amazon-border)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+        transition: 'transform 0.3s',
+        transform: show ? 'translateY(0)' : 'translateY(-100%)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 24,
+        padding: '0 32px',
+        minHeight: 44,
+        fontSize: '1rem',
+        fontWeight: 500,
+        justifyContent: 'center',
+      }}
+    >
+      {categories.map((cat) => (
+        <Link
+          key={cat._id}
+          to={`/products?category=${encodeURIComponent(cat.cat_name)}`}
+          style={{ color: 'var(--amazon-link)', textDecoration: 'none', padding: '8px 0' }}
+        >
+          {cat.cat_name}
+        </Link>
+      ))}
+      <Link to="/news" style={{ color: 'var(--amazon-link)', textDecoration: 'none', padding: '8px 0' }}>News</Link>
+      <Link to="/contact" style={{ color: 'var(--amazon-link)', textDecoration: 'none', padding: '8px 0' }}>Contact</Link>
+    </div>
+  );
+};
+
 const Layout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -250,7 +324,7 @@ const Layout = ({ children }) => {
         const response = await apiClient.get('/products/search', {
           params: { q: sanitizedQuery },
         });
-        navigate('/products', {
+        navigate('/search', {
           state: { searchQuery: sanitizedQuery, searchResults: response.data },
         });
         searchInputRef.current?.blur();
@@ -518,6 +592,8 @@ const Layout = ({ children }) => {
           </div>
         </div>
       </nav>
+      {/* Sub Navbar */}
+      <SubNavbar />
 
       {/* Main Content */}
       <main className="main-content" role="main">

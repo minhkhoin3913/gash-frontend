@@ -37,7 +37,7 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
   }
 };
 
-const Products = () => {
+const Search = () => {
   const { state, search } = useLocation();
   const navigate = useNavigate();
   const query = new URLSearchParams(search).get("q") || state?.searchQuery || "";
@@ -166,4 +166,4 @@ const Products = () => {
   );
 };
 
-export default Products;
+export default Search;

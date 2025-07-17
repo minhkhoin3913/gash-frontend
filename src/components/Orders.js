@@ -41,6 +41,7 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [orderDetails, setOrderDetails] = useState([]);
+  const [orderDetailsCache, setOrderDetailsCache] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -77,18 +78,20 @@ const Orders = () => {
   }, [user]);
 
   // Fetch order details
-  const fetchOrderDetails = useCallback(async () => {
-    if (!selectedOrderId || !user?._id) return;
+  const fetchOrderDetails = useCallback(async (orderId) => {
+    if (!orderId || !user?._id) return;
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
 
-      const response = await fetchWithRetry(`/order-details?order_id=${selectedOrderId}`, {
+      const response = await fetchWithRetry(`/order-details?order_id=${orderId}`, {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },
       });
-      setOrderDetails(Array.isArray(response) ? response : []);
+      const details = Array.isArray(response) ? response : [];
+      setOrderDetails(details);
+      setOrderDetailsCache(prev => ({ ...prev, [orderId]: details }));
       // Reset feedback form visibility and inputs when fetching new details
       setFeedbackFormVisible({});
       setFeedbackInputs({});
@@ -98,7 +101,7 @@ const Orders = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedOrderId, user]);
+  }, [user]);
 
   // Submit feedback
   const submitFeedback = useCallback(async (detailId, feedback) => {
@@ -185,9 +188,14 @@ const Orders = () => {
   // Fetch order details when selectedOrderId changes
   useEffect(() => {
     if (selectedOrderId) {
-      fetchOrderDetails();
+      // Use cache if available
+      if (orderDetailsCache[selectedOrderId]) {
+        setOrderDetails(orderDetailsCache[selectedOrderId]);
+      } else {
+        fetchOrderDetails(selectedOrderId);
+      }
     }
-  }, [fetchOrderDetails]);
+  }, [selectedOrderId, fetchOrderDetails, orderDetailsCache]);
 
   // Toggle order detail visibility
   const handleToggleDetails = useCallback((orderId) => {
@@ -309,121 +317,157 @@ const Orders = () => {
         </div>
       ) : (
         <div className="orders-list">
-          {orders.map((order) => (
-            <article key={order._id} className="orders-order-card">
-              <div className="orders-order-header">
-                <div className="orders-order-info">
-                  <p className="orders-order-id">Order ID: {order._id}</p>
-                  <p className="orders-order-date">
-                    Date: {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}
-                  </p>
-                  <p className="orders-order-total">
-                    Total: {formatPrice(order.totalPrice)}
-                  </p>
-                  <p className={`orders-order-status ${order.order_status?.toLowerCase()}`}>
-                    Status: {order.order_status || 'N/A'}
-                  </p>
-                  <p className="orders-order-payment">Payment: {order.pay_status || 'N/A'}</p>
-                  <p className="orders-order-shipping">Shipping: {order.shipping_status || 'N/A'}</p>
-                </div>
-                <button
-                  onClick={() => handleToggleDetails(order._id)}
-                  className="orders-toggle-details"
-                  aria-label={selectedOrderId === order._id ? `Hide details for order ${order._id}` : `View details for order ${order._id}`}
-                >
-                  {selectedOrderId === order._id ? 'Hide Details' : 'View Details'}
-                </button>
-              </div>
+          {orders.map((order) => {
+            // Always show a product name: use cached orderDetails if available, else order.products if available
+            let productName = '';
+            const detailsForOrder = orderDetailsCache[order._id];
+            if (Array.isArray(detailsForOrder) && detailsForOrder.length > 0) {
+              const names = detailsForOrder
+                .map(detail => detail.variant_id?.pro_id?.pro_name)
+                .filter(Boolean)
+                .sort();
+              productName = names[0] || '';
+            } else if (order.products && Array.isArray(order.products) && order.products.length > 0) {
+              const names = order.products
+                .map(p => p.pro_name)
+                .filter(Boolean)
+                .sort();
+              productName = names[0] || '';
+            }
+            if (!productName) productName = 'Order';
 
-              {/* Order Details */}
-              {selectedOrderId === order._id && (
-                <div className="orders-details-section">
-                  <h2 className="orders-details-title">Order Details</h2>
-                  {orderDetails.length === 0 ? (
-                    <p className="orders-no-details">No details available for this order.</p>
-                  ) : (
-                    <div className="orders-details-list">
-                      {orderDetails.map((detail) => (
-                        <div key={detail._id} className="orders-detail-item">
-                          <div className="orders-detail-info">
-                            <p className="orders-detail-name">
-                              {detail.variant_id?.pro_id?.pro_name || 'Unnamed Product'}
-                            </p>
-                            <p className="orders-detail-variant">
-                              Color: {detail.variant_id?.color_id?.color_name || 'N/A'}, 
-                              Size: {detail.variant_id?.size_id?.size_name || 'N/A'}
-                            </p>
-                            <p className="orders-detail-quantity">Quantity: {detail.Quantity || 0}</p>
-                            <p className="orders-detail-price">
-                              Unit Price: {formatPrice(detail.UnitPrice)}
-                            </p>
-                            <p className="orders-detail-feedback">
-                              Feedback: {detail.feedback_details || 'None'}
-                            </p>
-                            {canProvideFeedback(order) && (
-                              <div className="orders-feedback-actions">
-                                {detail.feedback_details && detail.feedback_details !== 'None' ? (
-                                  <>
-                                    <button
-                                      className="orders-edit-feedback-button"
-                                      onClick={() => toggleFeedbackForm(detail._id, detail.feedback_details)}
-                                      disabled={loading}
-                                      aria-label={`Edit feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
-                                    >
-                                      Edit Feedback
-                                    </button>
-                                    <button
-                                      className="orders-delete-feedback-button"
-                                      onClick={() => deleteFeedback(detail._id)}
-                                      disabled={loading}
-                                      aria-label={`Delete feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
-                                    >
-                                      Delete Feedback
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    className="orders-feedback-button"
-                                    onClick={() => toggleFeedbackForm(detail._id)}
-                                    disabled={loading}
-                                    aria-label={`Provide feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
-                                  >
-                                    {feedbackFormVisible[detail._id] ? 'Cancel' : 'Provide Feedback'}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                            {feedbackFormVisible[detail._id] && canProvideFeedback(order) && (
-                              <div className="orders-feedback-form">
-                                <textarea
-                                  className="orders-feedback-input"
-                                  value={feedbackInputs[detail._id] || ''}
-                                  onChange={(e) => handleFeedbackChange(detail._id, e.target.value)}
-                                  placeholder="Enter your feedback here..."
-                                  aria-label={`Feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
-                                />
-                                <button
-                                  className="orders-submit-feedback-button"
-                                  onClick={() => submitFeedback(detail._id, feedbackInputs[detail._id])}
-                                  disabled={loading || !feedbackInputs[detail._id]?.trim()}
-                                  aria-label={`Submit feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
-                                >
-                                  {detail.feedback_details && detail.feedback_details !== 'None' ? 'Update Feedback' : 'Submit Feedback'}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <p className="orders-detail-total">
-                            {formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}
-                          </p>
-                        </div>
-                      ))}
+            // Format order status for display
+            const formatStatus = (status) => {
+              if (!status) return 'N/A';
+              const map = {
+                pending: 'Pending',
+                not_shipped: 'Not Shipped',
+                shipped: 'Shipped',
+                delivered: 'Delivered',
+                cancelled: 'Cancelled',
+                processing: 'Processing',
+                paid: 'Paid',
+                unpaid: 'Unpaid',
+                refunded: 'Refunded',
+              };
+              return map[status] || status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            };
+
+            return (
+              <article key={order._id} className="orders-order-card">
+                <div className="orders-order-header">
+                  <div className="orders-order-info">
+                    <div className="orders-order-product-row">
+                      <p className="orders-order-product">{productName}</p>
+                      <span className={`orders-order-status-badge orders-order-status ${order.order_status?.toLowerCase()}`}>{formatStatus(order.order_status)}</span>
                     </div>
-                  )}
+                    <p className="orders-order-date">
+                      Date: {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}
+                    </p>
+                    <p className="orders-order-total">
+                      Total: {formatPrice(order.totalPrice)}
+                    </p>
+                    <p className="orders-order-shipping">Shipping: {formatStatus(order.shipping_status)}</p>
+                  </div>
+                  <button
+                    onClick={() => handleToggleDetails(order._id)}
+                    className="orders-toggle-details"
+                    aria-label={selectedOrderId === order._id ? `Hide details for order` : `View details for order`}
+                  >
+                    {selectedOrderId === order._id ? 'Hide Details' : 'View Details'}
+                  </button>
                 </div>
-              )}
-            </article>
-          ))}
+
+                {/* Order Details */}
+                {selectedOrderId === order._id && (
+                  <div className="orders-details-section">
+                    <h2 className="orders-details-title">Order Details</h2>
+                    {(orderDetailsCache[order._id]?.length === 0 || !orderDetailsCache[order._id]) ? (
+                      <p className="orders-no-details">No details available for this order.</p>
+                    ) : (
+                      <div className="orders-details-list">
+                        {orderDetailsCache[order._id].map((detail) => (
+                          <div key={detail._id} className="orders-detail-item">
+                            <div className="orders-detail-info">
+                              <p className="orders-detail-name">
+                                {detail.variant_id?.pro_id?.pro_name || 'Unnamed Product'}
+                              </p>
+                              <p className="orders-detail-variant">
+                                Color: {detail.variant_id?.color_id?.color_name || 'N/A'}, 
+                                Size: {detail.variant_id?.size_id?.size_name || 'N/A'}
+                              </p>
+                              <p className="orders-detail-quantity">Quantity: {detail.Quantity || 0}</p>
+                              <p className="orders-detail-price">
+                                Unit Price: {formatPrice(detail.UnitPrice)}
+                              </p>
+                              <p className="orders-detail-feedback">
+                                Feedback: {detail.feedback_details || 'None'}
+                              </p>
+                              {canProvideFeedback(order) && (
+                                <div className="orders-feedback-actions">
+                                  {detail.feedback_details && detail.feedback_details !== 'None' ? (
+                                    <>
+                                      <button
+                                        className="orders-edit-feedback-button"
+                                        onClick={() => toggleFeedbackForm(detail._id, detail.feedback_details)}
+                                        disabled={loading}
+                                        aria-label={`Edit feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
+                                      >
+                                        Edit Feedback
+                                      </button>
+                                      <button
+                                        className="orders-delete-feedback-button"
+                                        onClick={() => deleteFeedback(detail._id)}
+                                        disabled={loading}
+                                        aria-label={`Delete feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
+                                      >
+                                        Delete Feedback
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      className="orders-feedback-button"
+                                      onClick={() => toggleFeedbackForm(detail._id)}
+                                      disabled={loading}
+                                      aria-label={`Provide feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
+                                    >
+                                      {feedbackFormVisible[detail._id] ? 'Cancel' : 'Provide Feedback'}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              {feedbackFormVisible[detail._id] && canProvideFeedback(order) && (
+                                <div className="orders-feedback-form">
+                                  <textarea
+                                    className="orders-feedback-input"
+                                    value={feedbackInputs[detail._id] || ''}
+                                    onChange={(e) => handleFeedbackChange(detail._id, e.target.value)}
+                                    placeholder="Enter your feedback here..."
+                                    aria-label={`Feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
+                                  />
+                                  <button
+                                    className="orders-submit-feedback-button"
+                                    onClick={() => submitFeedback(detail._id, feedbackInputs[detail._id])}
+                                    disabled={loading || !feedbackInputs[detail._id]?.trim()}
+                                    aria-label={`Submit feedback for ${detail.variant_id?.pro_id?.pro_name || 'product'}`}
+                                  >
+                                    {detail.feedback_details && detail.feedback_details !== 'None' ? 'Update Feedback' : 'Submit Feedback'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <p className="orders-detail-total">
+                              {formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

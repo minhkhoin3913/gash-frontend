@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../styles/Home.css";
+import "../styles/ProductDetail.css"; // For button styling
 import {
   API_RETRY_COUNT,
-  API_RETRY_DELAY,
+  API_RETRY_DELAY
 } from "../constants/constants";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -13,6 +14,22 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const message =
+      status === 401
+        ? "Unauthorized access - please log in"
+        : status === 404
+        ? "Resource not found"
+        : status >= 500
+        ? "Server error - please try again later"
+        : "Network error - please check your connection";
+    return Promise.reject({ ...error, message });
+  }
+);
 
 const fetchWithRetry = async (url, retries = API_RETRY_COUNT, delay = API_RETRY_DELAY) => {
   for (let i = 0; i < retries; i++) {
@@ -26,58 +43,53 @@ const fetchWithRetry = async (url, retries = API_RETRY_COUNT, delay = API_RETRY_
   }
 };
 
-const carouselSlides = [
-  {
-    image: "/gash-logo.svg",
-    title: "Welcome to GASH!",
-    subtitle: "Discover the latest trends and best deals."
-  },
-  {
-    image: "/shirt-1.webp",
-    title: "New Arrivals",
-    subtitle: "Check out our newest products and styles."
-  },
-  {
-    image: "/trouser-1.webp",
-    title: "Seasonal Sale",
-    subtitle: "Save big on selected items this season!"
-  }
+const carouselMessages = [
+  "Welcome to GASH! Discover the latest trends.",
+  "Enjoy exclusive deals and recommendations.",
+  "Shop by category and find your perfect fit.",
+  "Fast delivery and easy returns on all orders.",
+  "Sign up for an account to save your favorites!"
 ];
 
 const Home = () => {
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [catLoading, setCatLoading] = useState(false);
-  const [catError, setCatError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
-  const slideCount = carouselSlides.length;
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
-  // Carousel auto-advance
+  // Carousel auto-cycling
+  const AUTO_CYCLE_DELAY = 5000;
+  const [isManuallyNavigated, setIsManuallyNavigated] = useState(false);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCarouselIndex((prev) => (prev + 1) % slideCount);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [slideCount]);
+    if (isManuallyNavigated) {
+      const pause = setTimeout(() => setIsManuallyNavigated(false), AUTO_CYCLE_DELAY);
+      return () => clearTimeout(pause);
+    }
+    const timer = setTimeout(() => {
+      setCarouselIndex((prev) => (prev + 1) % carouselMessages.length);
+    }, AUTO_CYCLE_DELAY);
+    return () => clearTimeout(timer);
+  }, [carouselIndex, isManuallyNavigated]);
 
-  // Manual carousel controls
-  const goToPrevSlide = useCallback(() => {
-    setCarouselIndex((prev) => (prev - 1 + slideCount) % slideCount);
-  }, [slideCount]);
-  const goToNextSlide = useCallback(() => {
-    setCarouselIndex((prev) => (prev + 1) % slideCount);
-  }, [slideCount]);
-
-  // Fetch products (show only first 6)
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const productsData = await fetchWithRetry("/products");
-      setProducts(Array.isArray(productsData) ? productsData.slice(0, 6) : []);
+      if (!Array.isArray(productsData) || productsData.length === 0) {
+        setError("No products available at this time");
+        setProducts([]);
+        setCategories([]);
+        return;
+      }
+      setProducts(productsData.filter((product) => product.status_product !== "discontinued"));
+      // Extract unique categories from products
+      const uniqueCategories = [
+        ...new Set(productsData.map((product) => product.cat_id?.cat_name).filter(Boolean)),
+      ];
+      setCategories(uniqueCategories);
     } catch (err) {
       setError(err.message || "Failed to fetch products");
     } finally {
@@ -85,43 +97,67 @@ const Home = () => {
     }
   }, []);
 
-  // --- Recommendation logic ---
-  const getRecommendationProducts = () => {
-    if (!Array.isArray(products) || products.length === 0) return [];
-    // If there are 5 or fewer products, just return all
-    if (products.length <= 5) return products;
-    // Otherwise, pick 5 random unique products
-    const indices = new Set();
-    while (indices.size < 5) {
-      indices.add(Math.floor(Math.random() * products.length));
-    }
-    return Array.from(indices).map(idx => products[idx]);
-  };
-  const recommendationProducts = getRecommendationProducts();
-
-  // Fetch categories
-  const fetchCategories = useCallback(async () => {
-    setCatLoading(true);
-    setCatError(null);
-    try {
-      const data = await fetchWithRetry("/categories");
-      setCategories(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setCatError(err.message || "Failed to fetch categories");
-      setCategories([]);
-    } finally {
-      setCatLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchProducts();
-    fetchCategories();
-  }, [fetchProducts, fetchCategories]);
+  }, [fetchProducts]);
 
-  const handleProductClick = (id) => {
-    if (!id) return;
-    navigate(`/product/${id}`);
+  // Shuffle helpers
+  const getRandomItems = (arr, count, excludeIds = []) => {
+    if (!Array.isArray(arr) || arr.length <= count) return arr;
+    const filtered = excludeIds.length > 0 ? arr.filter(item => !excludeIds.includes(item._id || item)) : arr;
+    const shuffled = [...filtered].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  };
+
+  // State for randomized sections
+  const [forYouProducts, setForYouProducts] = useState([]);
+  const [recommendedProducts, setRecommendedProducts] = useState([]);
+  const [randomCategories, setRandomCategories] = useState([]);
+
+  // Randomize once after products/categories are loaded
+  useEffect(() => {
+    const activeProducts = products.filter(p => p.status_product === 'active');
+    if (activeProducts.length > 0) {
+      const forYou = getRandomItems(activeProducts, 5);
+      setForYouProducts(forYou);
+      setRecommendedProducts(getRandomItems(activeProducts, 5, forYou.map(p => p._id)));
+    }
+  }, [products]);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      setRandomCategories(getRandomItems(categories, 5));
+    }
+  }, [categories]);
+
+  const handleProductClick = useCallback(
+    (id) => {
+      if (!id) {
+        setError("Invalid product selected");
+        return;
+      }
+      navigate(`/product/${id}`);
+    },
+    [navigate]
+  );
+
+  const handleKeyDown = useCallback(
+    (e, id) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleProductClick(id);
+      }
+    },
+    [handleProductClick]
+  );
+
+  const handleViewAll = () => {
+    navigate("/products");
+  };
+
+  const handleCategoryClick = (category) => {
+    if (!category) return;
+    navigate(`/products?category=${encodeURIComponent(category)}`);
   };
 
   const formatPrice = (price) => {
@@ -129,164 +165,260 @@ const Home = () => {
     return `$${price.toFixed(2)}`;
   };
 
+  // Carousel controls
+  const handlePrevCarousel = () => {
+    setCarouselIndex((prev) => (prev === 0 ? carouselMessages.length - 1 : prev - 1));
+    setIsManuallyNavigated(true);
+  };
+  const handleNextCarousel = () => {
+    setCarouselIndex((prev) => (prev === carouselMessages.length - 1 ? 0 : prev + 1));
+    setIsManuallyNavigated(true);
+  };
+
   return (
-    <div className="home-container">
-      <section className="home-carousel-viewport" aria-label="Featured banners">
-        <div className="home-carousel">
-          {carouselSlides.map((slide, idx) => (
-            <div
-              key={slide.title}
-              className={`home-carousel-slide${carouselIndex === idx ? " active" : ""}`}
-              aria-hidden={carouselIndex !== idx}
-              style={{ display: carouselIndex === idx ? "flex" : "none" }}
-            >
-              <img src={slide.image} alt={slide.title} className="home-carousel-image" />
-              <div className="home-carousel-caption">
-                <h2>{slide.title}</h2>
-                <p>{slide.subtitle}</p>
-              </div>
-            </div>
-          ))}
+    <>
+      {/* Carousel Section - full viewport width */}
+      <div style={{ width: '100%', overflowX: 'hidden' }}>
+        <div
+          style={{
+            width: "100%",
+            minHeight: 340,
+            height: "36vw",
+            maxHeight: 400,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "linear-gradient(90deg, #f0c14b 0%, #fffbe6 100%)",
+            position: "relative",
+            overflow: "hidden",
+            boxSizing: "border-box",
+            maxWidth: "100%",
+          }}
+        >
           <button
-            className="home-carousel-control home-carousel-control-left"
-            aria-label="Previous slide"
-            onClick={goToPrevSlide}
+            className="product-detail-thumbnail-arrow"
+            style={{
+              position: "absolute",
+              left: 32,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 2,
+              width: 36,
+              height: 36,
+              fontSize: 20,
+              minWidth: 36,
+              minHeight: 36,
+              maxWidth: 36,
+              maxHeight: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={handlePrevCarousel}
+            aria-label="Previous announcement"
           >
-            <i className="lni lni-chevron-left"></i>
+            <i className="lni lni-chevron-left" style={{ fontSize: 20 }}></i>
           </button>
-          <button
-            className="home-carousel-control home-carousel-control-right"
-            aria-label="Next slide"
-            onClick={goToNextSlide}
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 900,
+              textAlign: "center",
+              fontSize: "2.5rem",
+              fontWeight: 700,
+              color: "#131921",
+              letterSpacing: 1,
+              lineHeight: 1.2,
+              padding: "0 64px",
+              userSelect: "none",
+              boxSizing: "border-box",
+              margin: 0,
+              overflow: "hidden",
+            }}
           >
-            <i className="lni lni-chevron-right"></i>
-          </button>
-          <div className="home-carousel-indicators">
-            {carouselSlides.map((_, idx) => (
-              <button
-                key={idx}
-                className={carouselIndex === idx ? "active" : ""}
-                aria-label={`Go to slide ${idx + 1}`}
-                onClick={() => setCarouselIndex(idx)}
-              />
-            ))}
+            {carouselMessages[carouselIndex]}
           </div>
+            <button
+            className="product-detail-thumbnail-arrow"
+            style={{
+              position: "absolute",
+              right: 32,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 2,
+              width: 36,
+              height: 36,
+              fontSize: 20,
+              minWidth: 36,
+              minHeight: 36,
+              maxWidth: 36,
+              maxHeight: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={handleNextCarousel}
+            aria-label="Next announcement"
+          >
+            <i className="lni lni-chevron-right" style={{ fontSize: 20 }}></i>
+            </button>
         </div>
-      </section>
-
-      {/* Browse by Categories section */}
-      <section className="home-category-row" aria-label="Browse by Categories">
-        <header className="home-category-row-header">
-          <h1>Browse by Categories</h1>
-        </header>
-        {catError && (
-          <div className="home-category-error" role="alert">{catError}</div>
-        )}
-        {catLoading ? (
-          <div className="home-category-loading">Loading categories...</div>
-        ) : (
-          <div className="home-category-list-scroll">
-            {categories.map((cat) => (
-              <article
-                key={cat._id || cat.cat_name}
-                className="home-category-card"
-                onClick={() => navigate(`/product?category=${encodeURIComponent(cat.cat_name)}`)}
-                tabIndex={0}
-                role="button"
-                aria-label={`Browse ${cat.cat_name}`}
-                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") navigate(`/product?category=${encodeURIComponent(cat.cat_name)}`); }}
-              >
-                <div className="home-category-name">{cat.cat_name}</div>
-              </article>
-            ))}
+      </div>
+      {/* Main Home Content */}
+      <div className="product-list-container" style={{ maxWidth: 1200, flexDirection: "column", alignItems: "center" }}>
+        {error && (
+          <div className="product-list-error" role="alert" tabIndex={0} aria-live="polite">
+            <span className="product-list-error-icon" aria-hidden="true">⚠</span>
+            {error}
+            <button
+            onClick={fetchProducts}
+              className="product-list-retry-button"
+              disabled={loading}
+              aria-label="Retry loading products"
+            >
+              Retry
+            </button>
           </div>
         )}
-      </section>
 
-      {/* Featured Products section */}
-      <section className="home-product-row" aria-label="Featured products">
-        <header className="home-product-row-header">
-          <h1>Featured Products</h1>
-          <button className="home-view-all-btn" onClick={() => navigate("/product")}>View All</button>
-        </header>
-        {error && (
-          <div className="home-product-error" role="alert">{error}</div>
+      {loading && (
+          <div className="product-list-loading" role="status" aria-live="polite">
+            <div className="product-list-loading-spinner" aria-hidden="true"></div>
+          Loading recommendations...
+          </div>
         )}
-        {loading ? (
-          <div className="home-product-loading">Loading products...</div>
-        ) : (
-          <div className="home-product-list-scroll">
-            {products.map((product) => (
+
+      {/* Category Section */}
+      {!loading && !error && randomCategories.length > 0 && (
+        <section style={{ width: "100%", marginTop: 0 }}>
+          <h2 style={{ textAlign: "left", marginBottom: 24 }}>Categories</h2>
+          <div
+            className="product-list-product-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}
+            role="list"
+            aria-label={`${randomCategories.length} categories`}
+          >
+            {randomCategories.map((category) => (
+              <div
+                key={category}
+                className="product-list-product-card"
+                style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 30, fontWeight: 600, fontSize: "1.1rem" }}
+                tabIndex={0}
+                role="listitem"
+                aria-label={`View products in ${category}`}
+                onClick={() => handleCategoryClick(category)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") handleCategoryClick(category);
+                }}
+              >
+                {category}
+              </div>
+            ))}
+          </div>
+        </section>
+        )}
+
+      {/* For You Section */}
+      {!loading && !error && forYouProducts.length > 0 && (
+        <section style={{ width: "100%", marginTop: 24 }}>
+          <h2 style={{ textAlign: "left", marginBottom: 24 }}>For You</h2>
+          <div
+            className="product-list-product-grid"
+            role="grid"
+            aria-label={`${forYouProducts.length} personalized products`}
+          >
+            {forYouProducts.map((product) => (
               <article
                 key={product._id}
-                className={`home-product-card${product.status_product === "out_of_stock" ? " out-of-stock" : ""}`}
+                className={`product-list-product-card ${product.status_product === "out_of_stock" ? "out-of-stock" : ""}`}
                 onClick={() => handleProductClick(product._id)}
+                onKeyDown={(e) => handleKeyDown(e, product._id)}
+                role="gridcell"
                 tabIndex={0}
-                role="button"
                 aria-label={`View ${product.pro_name || "product"} details${product.status_product === "out_of_stock" ? ", currently out of stock" : ""}`}
               >
-                <img
-                  src={product.imageURL || "/placeholder-image.png"}
-                  alt={product.pro_name || "Product image"}
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = "/placeholder-image.png";
-                    e.target.alt = `Image not available for ${product.pro_name || "product"}`;
-                  }}
-                  className="home-product-image"
-                />
-                <div className="home-product-info">
-                  <h2>{product.pro_name || "Unnamed Product"}</h2>
-                  <p className="home-product-price">{formatPrice(product.pro_price)}</p>
+                <div className="product-list-image-container">
+                  <img
+                    src={product.imageURL || "/placeholder-image.png"}
+                    alt={product.pro_name || "Product image"}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.src = "/placeholder-image.png";
+                      e.target.alt = `Image not available for ${product.pro_name || "product"}`;
+                    }}
+                  />
+                </div>
+                <div className="product-list-content">
+                  <h2 title={product.pro_name}>{product.pro_name || "Unnamed Product"}</h2>
+                  <p
+                    className="product-list-price"
+                    aria-label={`Price: ${formatPrice(product.pro_price)}`}
+                  >
+                    {formatPrice(product.pro_price)}
+                  </p>
                 </div>
               </article>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* Recommendation section */}
-      <section className="home-product-row" aria-label="Recommended products">
-        <header className="home-product-row-header">
-          <h1>Recommendation</h1>
-        </header>
-        {error && (
-          <div className="home-product-error" role="alert">{error}</div>
-        )}
-        {loading ? (
-          <div className="home-product-loading">Loading recommendations...</div>
-        ) : (
-          <div className="home-product-list-scroll">
-            {recommendationProducts.map((product) => (
+      {/* Recommendations Section */}
+      {!loading && !error && recommendedProducts.length > 0 && (
+        <section style={{ width: "100%", marginTop: 24 }}>
+          <h2 style={{ textAlign: "left", marginBottom: 24 }}>Recommendations</h2>
+          <div
+            className="product-list-product-grid"
+            role="grid"
+            aria-label={`${recommendedProducts.length} recommended products`}
+          >
+            {recommendedProducts.map((product) => (
               <article
-                key={product._id + "-rec"}
-                className={`home-product-card${product.status_product === "out_of_stock" ? " out-of-stock" : ""}`}
+                key={product._id}
+                className={`product-list-product-card ${product.status_product === "out_of_stock" ? "out-of-stock" : ""}`}
                 onClick={() => handleProductClick(product._id)}
+                onKeyDown={(e) => handleKeyDown(e, product._id)}
+                role="gridcell"
                 tabIndex={0}
-                role="button"
                 aria-label={`View ${product.pro_name || "product"} details${product.status_product === "out_of_stock" ? ", currently out of stock" : ""}`}
               >
-                <img
-                  src={product.imageURL || "/placeholder-image.png"}
-                  alt={product.pro_name || "Product image"}
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = "/placeholder-image.png";
-                    e.target.alt = `Image not available for ${product.pro_name || "product"}`;
-                  }}
-                  className="home-product-image"
-                />
-                <div className="home-product-info">
-                  <h2>{product.pro_name || "Unnamed Product"}</h2>
-                  <p className="home-product-price">{formatPrice(product.pro_price)}</p>
+                <div className="product-list-image-container">
+                  <img
+                    src={product.imageURL || "/placeholder-image.png"}
+                    alt={product.pro_name || "Product image"}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.src = "/placeholder-image.png";
+                      e.target.alt = `Image not available for ${product.pro_name || "product"}`;
+                    }}
+                  />
+                </div>
+                <div className="product-list-content">
+                  <h2 title={product.pro_name}>{product.pro_name || "Unnamed Product"}</h2>
+                  <p
+                    className="product-list-price"
+                    aria-label={`Price: ${formatPrice(product.pro_price)}`}
+                  >
+                    {formatPrice(product.pro_price)}
+                  </p>
                 </div>
               </article>
             ))}
           </div>
-        )}
-      </section>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 32 }}>
+            <button
+              className="product-detail-add-to-favorites"
+              style={{ minWidth: 180, fontSize: "1rem" }}
+              onClick={handleViewAll}
+            >
+              View All
+            </button>
+          </div>
+        </section>
+      )}
     </div>
+    </>
   );
 };
 
-export default Home; 
+export default Home;

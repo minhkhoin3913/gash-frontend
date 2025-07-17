@@ -194,21 +194,11 @@ const ProductDetail = () => {
         } catch {
           parsedStored = {};
         }
-        const defaultColor = parsedStored[id]?.selectedColor || uniqueColors[0] || null;
-        const defaultSize = parsedStored[id]?.selectedSize || uniqueSizes[0] || null;
-        const defaultQuantity = parsedStored[id]?.quantity || 1;
-        setSelectedColor(defaultColor);
-        setSelectedSize(defaultSize);
-        setQuantity(defaultQuantity);
-
-        if (defaultColor && defaultSize) {
-          const defaultVariant = variantsResponse.find(
-            (v) =>
-              v.color_id?.color_name === defaultColor &&
-              v.size_id?.size_name === defaultSize
-          );
-          setSelectedVariant(defaultVariant || null);
-        }
+        // Start with no selection
+        setSelectedColor(null);
+        setSelectedSize(null);
+        setQuantity(1);
+        setSelectedVariant(null);
       }
 
       setSelectedImage(productResponse.imageURL || "/placeholder-image.png");
@@ -241,20 +231,12 @@ const ProductDetail = () => {
   }, [id, user]);
 
   const fetchFeedbacks = useCallback(async () => {
-    if (!user || !localStorage.getItem("token")) {
-      setFeedbacks([]);
-      return;
-    }
-
     setFeedbackLoading(true);
     setFeedbackError(null);
 
     try {
       const feedbackResponse = await fetchWithRetry(
-        `/order-details/product/${id}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
+        `/order-details/product/${id}`
       );
       setFeedbacks(feedbackResponse || []);
     } catch (err) {
@@ -266,7 +248,7 @@ const ProductDetail = () => {
     } finally {
       setFeedbackLoading(false);
     }
-  }, [id, user]);
+  }, [id]);
 
   // Initial fetch
   useEffect(() => {
@@ -323,18 +305,14 @@ const ProductDetail = () => {
     (color) => {
       if (!color) return;
       setSelectedColor(color);
-
-      const variant = selectedSize
-        ? variantIndex.byColorSize[`${color}-${selectedSize}`] || null
-        : variantIndex.byColor[color]?.[0] || null;
-      setSelectedVariant(variant);
-
+      setSelectedSize(null); // Reset size selection when color changes
+      setSelectedVariant(null);
       setStoredState((prev) => ({
         ...prev,
-        [id]: { ...prev[id], selectedColor: color },
+        [id]: { ...prev[id], selectedColor: color, selectedSize: null },
       }));
     },
-    [variantIndex, selectedSize, id, setStoredState]
+    [variantIndex, id, setStoredState]
   );
 
   const handleSizeClick = useCallback(
@@ -501,8 +479,15 @@ const ProductDetail = () => {
       return;
     }
 
-    navigate("/checkout");
-  }, [user, selectedVariant, isInStock, navigate, quantity]);
+    // Go to checkout with product info
+    navigate("/checkout", {
+      state: {
+        product,
+        variant: selectedVariant,
+        quantity,
+      },
+    });
+  }, [user, selectedVariant, isInStock, navigate, quantity, product]);
 
   // Combine product.imageURL and additional images
   const allThumbnails = useMemo(() => {
@@ -689,19 +674,11 @@ const ProductDetail = () => {
                 isInStock ? "in-stock" : "out-of-stock"
               }`}
             >
-              {isInStock ? "69 in Stock" : "Out of Stock"}
+              {isInStock ? "In Stock" : "Out of Stock"}
               {selectedVariant?.quantity &&
                 ` (${selectedVariant.quantity} available)`}
             </span>
           </div>
-          {selectedVariant && (
-            <p className="product-detail-selected-variant" aria-live="polite">
-              Selected: {selectedColor}
-              {selectedVariant.size_id?.size_name &&
-                `, ${selectedVariant.size_id.size_name}`}
-              {`, Quantity: ${quantity}`}
-            </p>
-          )}
           <div className="product-detail-variants">
             {availableColors.length > 0 && (
               <fieldset className="product-detail-color-section">
@@ -828,7 +805,7 @@ const ProductDetail = () => {
       <div className="product-detail-feedback">
         <h2>Customer Feedback</h2>
         {feedbackLoading && (
-          <div className="product-detail-feedback-loading" role="status">
+          <div className="product-list-loading" role="status">
             <div
               className="product-detail-loading-spinner"
               aria-hidden="true"
@@ -869,10 +846,21 @@ const ProductDetail = () => {
                 role="listitem"
               >
                 <div className="product-detail-feedback-header">
-                  <span className="product-detail-feedback-username">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <img
+                      src={feedback.order_id?.acc_id?.image}
+                      alt={
+                        feedback.order_id?.acc_id?.username
+                          ? `${feedback.order_id.acc_id.username}'s profile picture`
+                          : 'Default profile picture'
+                      }
+                      style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #d5d9d9' }}
+                    />
+                    <span className="product-detail-feedback-username" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
                     {feedback.order_id?.acc_id?.username || "Anonymous"}
                   </span>
-                  <span className="product-detail-feedback-date">
+                  </span>
+                  <span className="product-detail-feedback-date" style={{ alignSelf: 'center', display: 'flex', alignItems: 'center', height: '100%' }}>
                     {formatDate(feedback.order_id?.orderDate)}
                   </span>
                 </div>

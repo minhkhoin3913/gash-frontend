@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import Home from "./components/Home";
 import ProductList from "./components/ProductList";
 import ProductDetail from "./components/ProductDetail";
 import Login from "./components/Login";
@@ -13,11 +12,13 @@ import Checkout from "./components/Checkout";
 import Orders from "./components/Orders";
 import Layout from "./components/Layout";
 import ProductFavorite from "./components/ProductFavorite";
-import Products from "./components/Products";
+import Search from "./components/Search";
 import OTPVerification from "./components/OTPVerification";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import Register from "./components/Register";
+import Home from "./components/Home";
+
 
 const App = () => {
   return (
@@ -27,7 +28,6 @@ const App = () => {
           <Layout>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/product" element={<ProductList />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
@@ -39,8 +39,8 @@ const App = () => {
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/favorites" element={<ProductFavorite />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/products/:id" element={<ProductDetail />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/products" element={<ProductList />} />
               <Route path="/register" element={<Register />} />
             </Routes>
           </Layout>
