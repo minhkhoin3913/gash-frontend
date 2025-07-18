@@ -12,6 +12,7 @@
   --amazon-star: #f90;
   --amazon-warning: #ff9900;
   --amazon-focus: #007185;
+  --transition-fast: 0.2s ease;
 }
 
 .orders-container {
@@ -204,7 +205,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
 }
 .orders-order-info {
   display: flex;
@@ -221,11 +221,16 @@
   text-decoration: underline;
 }
 .orders-order-date,
-.orders-order-total,
 .orders-order-payment,
 .orders-order-shipping {
   font-size: 0.875rem;
   color: var(--amazon-secondary-text);
+  margin: 4px 0;
+}
+.orders-order-total {
+  font-size: 1rem;
+  color: var(--amazon-error);
+  font-weight: 600;
   margin: 4px 0;
 }
 .orders-order-status {
@@ -260,7 +265,7 @@
 }
 .orders-details-section {
   background-color: var(--amazon-secondary-bg);
-  padding: 12px;
+  padding: 16px;
   border-radius: 12px;
   margin-top: 12px;
 }
@@ -278,7 +283,6 @@
 .orders-detail-item {
   display: flex;
   justify-content: space-between;
-  padding: 12px 0;
   border-bottom: 2px solid var(--amazon-border);
 }
 .orders-detail-item:last-child {
@@ -302,6 +306,7 @@
 .orders-detail-feedback {
   font-size: 0.8125rem;
   color: var(--amazon-secondary-text);
+
   margin: 2px 0;
 }
 .orders-detail-total {
@@ -467,6 +472,223 @@
   border-color: #f5c6cb;
 }
 
+/* Feedback Modal Styles */
+.orders-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.orders-modal {
+  background: var(--amazon-bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.18);
+  padding: 32px 24px 24px 24px;
+  min-width: 320px;
+  max-width: 95vw;
+  width: 400px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 2px solid var(--amazon-border);
+}
+.orders-modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+}
+.orders-modal-input {
+  width: 100%;
+  max-width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  font-size: 1rem;
+  border: 2px solid var(--amazon-border);
+  border-radius: 6px;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+  resize: vertical;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.orders-modal-input:focus {
+  outline: 2px solid var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+.orders-modal-error {
+  color: var(--amazon-error);
+  background: #fff5f6;
+  border: 1.5px solid #f5c6cb;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+.orders-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.orders-modal-add-btn {
+  padding: 12px;
+  border: 2px solid #d5a429;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  background-color: var(--amazon-primary);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.orders-modal-add-btn:hover:not(:disabled) {
+  background-color: var(--amazon-secondary-bg);
+  border-color: var(--amazon-link);
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-add-btn:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-add-btn:disabled {
+  background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+.orders-modal-change-btn {
+  padding: 12px;
+  border: 2px solid #d5a429;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  background-color: var(--amazon-primary);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.orders-modal-change-btn:hover:not(:disabled) {
+  background-color: var(--amazon-secondary-bg);
+  border-color: var(--amazon-link);
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-change-btn:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-change-btn:disabled {
+  background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+.orders-modal-delete-btn {
+  padding: 12px;
+  border: 2px solid var(--amazon-error);
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-error);
+  background: none;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.orders-modal-delete-btn:hover:not(:disabled) {
+  background-color: #fff5f6;
+  border-color: #b12704;
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-delete-btn:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-delete-btn:disabled {
+  background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+.orders-modal-cancel-btn {
+  padding: 12px;
+  border: 2px solid var(--amazon-border);
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-link);
+  background: none;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.orders-modal-cancel-btn:hover:not(:disabled) {
+  background-color: var(--amazon-secondary-bg);
+  border-color: var(--amazon-link);
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-cancel-btn:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-modal-cancel-btn:disabled {
+  background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+@media (max-width: 600px) {
+  .orders-modal {
+    width: 95vw;
+    min-width: unset;
+    padding: 18px 8px 12px 8px;
+  }
+}
+
+.orders-feedback-modal-btn {
+  padding: 6px 12px;
+  background: none;
+  border: 2px solid var(--amazon-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-link);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.orders-feedback-modal-btn:hover,
+.orders-feedback-modal-btn:focus {
+  background-color: var(--amazon-secondary-bg);
+  border-color: var(--amazon-link);
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.orders-order-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  min-width: 160px;
+}
+.orders-toggle-details,
+.orders-feedback-modal-btn {
+  min-width: 140px;
+  width: 100%;
+  max-width: 220px;
+  height: 40px;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 @media (max-width: 768px) {
   .orders-container {
     padding: 12px;
@@ -475,6 +697,21 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+  .orders-order-actions {
+    flex-direction: row;
+    gap: 8px;
+    min-width: 0;
+    justify-content: center;
+    align-items: center;
+  }
+  .orders-toggle-details,
+  .orders-feedback-modal-btn {
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    height: 36px;
+    font-size: 0.92rem;
   }
   .orders-detail-item {
     flex-direction: column;
@@ -534,7 +771,11 @@
   .orders-feedback-button,
   .orders-edit-feedback-button,
   .orders-delete-feedback-button,
-  .orders-submit-feedback-button {
+  .orders-submit-feedback-button,
+  .orders-modal-add-btn,
+  .orders-modal-change-btn,
+  .orders-modal-delete-btn,
+  .orders-modal-cancel-btn {
     transition: none;
   }
   .orders-loading-spinner {
@@ -554,7 +795,11 @@
   .orders-feedback-button,
   .orders-edit-feedback-button,
   .orders-delete-feedback-button,
-  .orders-submit-feedback-button {
+  .orders-submit-feedback-button,
+  .orders-modal-add-btn,
+  .orders-modal-change-btn,
+  .orders-modal-delete-btn,
+  .orders-modal-cancel-btn {
     border-width: 2px;
     font-weight: 700;
   }

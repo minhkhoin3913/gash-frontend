@@ -18,7 +18,8 @@ import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import Register from "./components/Register";
 import Home from "./components/Home";
-
+import BlogPost from "./components/BlogPost";
+import Contact from "./components/Contact";
 
 const App = () => {
   return (
@@ -42,6 +43,9 @@ const App = () => {
               <Route path="/search" element={<Search />} />
               <Route path="/products" element={<ProductList />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/news" element={<BlogPost />} />
+              <Route path="/contact" element={<Contact />} />
+
             </Routes>
           </Layout>
         </AuthProvider>
