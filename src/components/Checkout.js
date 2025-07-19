@@ -201,14 +201,14 @@ const Checkout = () => {
           navigate('/orders');
         }, 3000);
       } else if (paymentMethod === 'vnpay') {
-        // Call backend to get VNPay payment URL (GET with query params)
-        const params = new URLSearchParams({
-          orderId,
-          bankCode: '', // Optionally, let user select bank
-          language: 'vn',
-        });
-        const paymentUrlRes = await apiClient.get(
-          `/orders/payment-url?${params.toString()}`,
+        // Call backend to get VNPay payment URL (POST with JSON body)
+        const paymentUrlRes = await apiClient.post(
+          '/orders/payment-url',
+          {
+            orderId,
+            bankCode: '', // Optionally, let user select bank
+            language: 'vn',
+          },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         // Redirect to VNPay payment page

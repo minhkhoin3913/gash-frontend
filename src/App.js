@@ -20,6 +20,7 @@ import Register from "./components/Register";
 import Home from "./components/Home";
 import BlogPost from "./components/BlogPost";
 import Contact from "./components/Contact";
+import VNPayReturn from "./components/VNPayReturn";
 
 const App = () => {
   return (
@@ -45,6 +46,7 @@ const App = () => {
               <Route path="/register" element={<Register />} />
               <Route path="/news" element={<BlogPost />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/vnpay-return" element={<VNPayReturn />} />
 
             </Routes>
           </Layout>

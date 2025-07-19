@@ -803,7 +803,7 @@ const Orders = () => {
                     </button>
                     {canCancelOrder(order) ? (
                       <button
-                        className="orders-feedback-modal-btn"
+                        className="orders-feedback-modal-btn cancel-order"
                         onClick={() => openCancelModal(order)}
                         aria-label="Cancel Order"
                       >

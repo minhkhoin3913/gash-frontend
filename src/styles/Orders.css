@@ -667,6 +667,16 @@
   outline: 2px solid var(--amazon-focus);
   outline-offset: 2px;
 }
+.orders-feedback-modal-btn.cancel-order {
+  color: var(--amazon-error);
+}
+.orders-feedback-modal-btn.cancel-order:hover,
+.orders-feedback-modal-btn.cancel-order:focus {
+  background-color: #fff5f6;
+  border-color: #b12704;
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
 
 .orders-order-actions {
   display: flex;
@@ -677,16 +687,32 @@
 }
 .orders-toggle-details,
 .orders-feedback-modal-btn {
-  min-width: 140px;
-  width: 100%;
-  max-width: 220px;
-  height: 40px;
+  padding: 6px 12px;
+  border: 2px solid var(--amazon-border);
+  border-radius: 6px;
+  background-color: var(--amazon-bg);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: var(--transition-fast);
+  width: 130px;
   box-sizing: border-box;
-  font-size: 0.95rem;
+  text-align: center;
+}
+.orders-toggle-details:hover,
+.orders-feedback-modal-btn:hover {
+  background-color: var(--amazon-secondary-bg);
+  border-color: var(--amazon-link);
+}
+.orders-toggle-details.selected,
+.orders-feedback-modal-btn.selected {
+  border-color: var(--amazon-primary);
+  background-color: #fffbe6;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+.orders-toggle-details:focus,
+.orders-feedback-modal-btn:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
 }
 
 @media (max-width: 768px) {

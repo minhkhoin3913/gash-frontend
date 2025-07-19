@@ -360,7 +360,7 @@ const Layout = ({ children }) => {
   const handleSearchResultClick = useCallback((productId) => {
     setIsSearchDropdownOpen(false);
     setSearchQuery('');
-    navigate(`/products/${productId}`);
+    navigate(`/product/${productId}`);
     searchInputRef.current?.blur();
   }, [navigate]);
 
