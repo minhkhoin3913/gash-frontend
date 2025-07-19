@@ -31,6 +31,16 @@ const VNPayReturn = () => {
     fetchPaymentResult();
   }, []);
 
+  // Auto-redirect to /orders after 3 seconds
+  useEffect(() => {
+    if (status === 'success' || status === 'failed') {
+      const timer = setTimeout(() => {
+        navigate('/orders');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [status, navigate]);
+
   return (
     <div className="vnpay-return-container" style={{ padding: '2rem', textAlign: 'center' }}>
       <h1>VNPay Payment Result</h1>
