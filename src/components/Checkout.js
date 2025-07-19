@@ -1,44 +1,98 @@
 import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import '../styles/Checkout.css';
 
-// API client with interceptors
+// API client configuration
 const apiClient = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
   timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
-apiClient.interceptors.response.use(
-  response => response,
+// Request interceptor
+apiClient.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Log the full request details
+    console.log('API Request:', {
+      url: config.url,
+      method: config.method,
+      data: config.data,
+      headers: config.headers,
+      baseURL: config.baseURL
+    });
+    return config;
+  },
   error => {
-    const status = error.response?.status;
-    const message = status === 401 ? 'Unauthorized access - please log in' :
-                    status === 404 ? 'Resource not found' :
-                    status >= 500 ? 'Server error - please try again later' :
-                    'Network error - please check your connection';
-    return Promise.reject({ ...error, message });
+    console.error('API Request Error:', error);
+    return Promise.reject(error);
   }
 );
 
-// API functions
-const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await apiClient.get(url, options);
-      return response.data;
-    } catch (error) {
-      console.error(`Attempt ${i + 1} failed for ${url}:`, error.message);
-      if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+// Response interceptor
+apiClient.interceptors.response.use(
+  response => {
+    console.log('API Response:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
+  error => {
+    console.error('API Error Details:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      fullError: error
+    });
+    
+    // Improved error handling
+    let errorMessage = 'An error occurred';
+    if (error.response) {
+      // Server responded with error
+      switch (error.response.status) {
+        case 404:
+          errorMessage = 'API endpoint not found. Please check the API URL.';
+          break;
+        case 401:
+          errorMessage = 'Unauthorized. Please log in again.';
+          break;
+        case 400:
+          errorMessage = error.response.data?.message || 'Invalid request data';
+          break;
+        case 500:
+          errorMessage = 'Server error. Please try again later.';
+          break;
+        default:
+          errorMessage = error.response.data?.message || 'Unknown error occurred';
+      }
+    } else if (error.request) {
+      // Request made but no response
+      errorMessage = 'No response from server. Please check your connection.';
     }
+    
+    return Promise.reject({
+      ...error,
+      message: errorMessage
+    });
   }
-};
+);
 
 const Checkout = () => {
   const { user } = useContext(AuthContext);
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const buyNowState = location.state && location.state.product && location.state.variant && location.state.quantity
     ? {
         product: location.state.product,
@@ -56,7 +110,18 @@ const Checkout = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
-  const navigate = useNavigate();
+
+  // Define itemsToOrder outside handlePlaceOrder
+  const itemsToOrder = useMemo(() => {
+    return buyNowState
+      ? [{
+          variant_id: buyNowState.variant._id,
+          pro_price: buyNowState.variant.pro_price || buyNowState.product.pro_price || 0,
+          pro_quantity: buyNowState.quantity,
+          pro_name: buyNowState.product.pro_name,
+        }]
+      : cartItems;
+  }, [buyNowState, cartItems]);
 
   // Fetch cart items (only if not Buy Now)
   const fetchCartItems = useCallback(async () => {
@@ -71,10 +136,8 @@ const Checkout = () => {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
 
-      const response = await fetchWithRetry(`/carts?acc_id=${user._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCartItems(Array.isArray(response) ? response : []);
+      const response = await apiClient.get(`/carts?acc_id=${user._id}`);
+      setCartItems(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(err.message || 'Failed to load cart items');
       console.error('Fetch cart items error:', err);
@@ -91,6 +154,46 @@ const Checkout = () => {
       fetchCartItems();
     }
   }, [user, navigate, fetchCartItems, buyNowState]);
+
+  // Handle VNPay return
+  useEffect(() => {
+    const vnp_ResponseCode = searchParams.get('vnp_ResponseCode');
+    const vnp_TxnRef = searchParams.get('vnp_TxnRef');
+    
+    if (vnp_ResponseCode && vnp_TxnRef) {
+      const handleVNPayReturn = async () => {
+        try {
+          const response = await apiClient.get(`/order/vnpay-return${window.location.search}`);
+          
+          if (response.data.success) {
+            setToast({ type: 'success', message: response.data.message });
+            setTimeout(() => {
+              setToast(null);
+              navigate(`/orders/${vnp_TxnRef}`);
+            }, 3000);
+          } else {
+            setToast({ type: 'error', message: response.data.message });
+            setTimeout(() => {
+              setToast(null);
+              navigate('/cart');
+            }, 3000);
+          }
+        } catch (err) {
+          console.error('VNPay return error:', err);
+          setToast({ 
+            type: 'error', 
+            message: err.message || 'Payment verification failed' 
+          });
+          setTimeout(() => {
+            setToast(null);
+            navigate('/cart');
+          }, 3000);
+        }
+      };
+
+      handleVNPayReturn();
+    }
+  }, [searchParams, navigate]);
 
   // Calculate total price
   const totalPrice = useMemo(() => {
@@ -118,16 +221,7 @@ const Checkout = () => {
   // Handle form submission
   const handlePlaceOrder = useCallback(async (e) => {
     e.preventDefault();
-    const isBuyNow = !!buyNowState;
-    const itemsToOrder = isBuyNow
-      ? [{
-          variant_id: buyNowState.variant._id,
-          pro_price: buyNowState.variant.pro_price || buyNowState.product.pro_price || 0,
-          pro_quantity: buyNowState.quantity,
-          pro_name: buyNowState.product.pro_name,
-        }]
-      : cartItems;
-
+    
     if (itemsToOrder.length === 0) {
       setError('Your cart is empty');
       setToast({ type: 'error', message: 'Your cart is empty' });
@@ -146,54 +240,51 @@ const Checkout = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
-
       // Create order
-      const orderResponse = await apiClient.post(
-        '/orders',
-        {
-          acc_id: user._id,
-          username: formData.username,
-          addressReceive: formData.addressReceive,
-          phone: formData.phone,
-          totalPrice,
-          order_status: 'pending',
-          pay_status: 'unpaid',
-          shipping_status: 'not_shipped',
-          feedback_order: 'None',
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const orderData = {
+        acc_id: user._id,
+        addressReceive: formData.addressReceive,
+        phone: formData.phone,
+        totalPrice,
+        order_status: 'pending',
+        pay_status: 'unpaid',
+        shipping_status: 'not_shipped',
+        feedback_order: 'None'
+      };
+
+      console.log('Creating order with data:', orderData);
+      
+      // Changed from /order to /orders
+      const orderResponse = await apiClient.post('/orders', orderData);
+      
+      if (!orderResponse.data.order) {
+        throw new Error(orderResponse.data.message || 'Failed to create order');
+      }
+
       const orderId = orderResponse.data.order._id;
+      console.log('Order created:', orderResponse.data);
 
       // Create order details
-      await Promise.all(
-        itemsToOrder.map(async (item) => {
-          await apiClient.post(
-            '/order-details',
-            {
-              order_id: orderId,
-              variant_id: item.variant_id,
-              UnitPrice: item.pro_price || 0,
-              Quantity: item.pro_quantity || 1,
-              feedback_details: 'None',
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        })
-      );
+      const orderDetailsPromises = itemsToOrder.map(item => {
+        const detailData = {
+          order_id: orderId,
+          variant_id: item.variant_id,
+          UnitPrice: item.pro_price || 0,
+          Quantity: item.pro_quantity || 1,
+          feedback_details: 'None'
+        };
+        console.log('Creating order detail:', detailData);
+        return apiClient.post('/order-details', detailData);
+      });
+
+      await Promise.all(orderDetailsPromises);
 
       if (paymentMethod === 'cash') {
-        // Clear cart if not Buy Now
-        if (!isBuyNow) {
-        await Promise.all(
-          cartItems.map(async (item) => {
-            await apiClient.delete(`/carts/${item._id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-          })
-        );
+        if (!buyNowState) {
+          const deleteCartPromises = cartItems.map(item => 
+            apiClient.delete(`/carts/${item._id}`)
+          );
+          await Promise.all(deleteCartPromises);
         }
         setToast({ type: 'success', message: 'Order placed successfully!' });
         setTimeout(() => {
@@ -201,30 +292,48 @@ const Checkout = () => {
           navigate('/orders');
         }, 3000);
       } else if (paymentMethod === 'vnpay') {
-        // Call backend to get VNPay payment URL (GET with query params)
-        const params = new URLSearchParams({
-          orderId,
-          bankCode: '', // Optionally, let user select bank
-          language: 'vn',
-        });
-        const paymentUrlRes = await apiClient.get(
-          `/orders/payment-url?${params.toString()}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        // Redirect to VNPay payment page
-        window.location.href = paymentUrlRes.data.paymentUrl;
+        try {
+          const paymentData = {
+            orderId,
+            bankCode: '',
+            language: 'vn'
+          };
+          
+          console.log('Requesting VNPay payment URL:', paymentData);
+          
+          // Changed from /order/payment-url to /orders/payment-url
+          const paymentUrlRes = await apiClient.post('/orders/payment-url', paymentData);
+          
+          if (paymentUrlRes.data.paymentUrl) {
+            window.location.href = paymentUrlRes.data.paymentUrl;
+          } else {
+            throw new Error(paymentUrlRes.data.message || 'Invalid payment URL received');
+          }
+        } catch (err) {
+          console.error('VNPay payment error:', err);
+          setToast({ 
+            type: 'error', 
+            message: err.message || 'Failed to initiate payment' 
+          });
+          setTimeout(() => setToast(null), 3000);
+        }
         return;
       }
     } catch (err) {
       const errorMessage = err.message || 'Failed to place order';
+      console.error('Place order error:', {
+        message: errorMessage,
+        error: err,
+        requestData: err.config?.data,
+        responseData: err.response?.data
+      });
       setError(errorMessage);
       setToast({ type: 'error', message: errorMessage });
       setTimeout(() => setToast(null), 3000);
-      console.error('Place order error:', err);
     } finally {
       setLoading(false);
     }
-  }, [cartItems, user, formData, totalPrice, navigate, paymentMethod, buyNowState]);
+  }, [cartItems, user, formData, totalPrice, navigate, paymentMethod, buyNowState, itemsToOrder]);
 
   // Retry fetching cart items
   const handleRetry = useCallback(() => {
