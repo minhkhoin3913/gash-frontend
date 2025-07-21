@@ -134,10 +134,8 @@ const Register = () => {
             aria-busy={isLoading}
           >
             {isLoading ? (
-              <>
-                <span className="signup-loading-spinner" aria-hidden="true" />
-                Creating Account...
-              </>
+              // Removed spinner, only show text
+              'Creating Account...'
             ) : (
               'Create your GASH account'
             )}

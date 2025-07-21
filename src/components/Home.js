@@ -162,7 +162,7 @@ const Home = () => {
 
   const formatPrice = (price) => {
     if (typeof price !== "number" || isNaN(price)) return "N/A";
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
   // Carousel controls
@@ -178,100 +178,35 @@ const Home = () => {
   return (
     <>
       {/* Carousel Section - full viewport width */}
-      <div style={{ width: '100%', overflowX: 'hidden' }}>
-        <div
-          style={{
-            width: "100%",
-            minHeight: 340,
-            height: "36vw",
-            maxHeight: 400,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "linear-gradient(90deg, #f0c14b 0%, #fffbe6 100%)",
-            position: "relative",
-            overflow: "hidden",
-            boxSizing: "border-box",
-            maxWidth: "100%",
-          }}
-        >
+      <div className="home-carousel-outer">
+        <div className="home-carousel">
           <button
-            className="product-detail-thumbnail-arrow"
-            style={{
-              position: "absolute",
-              left: 32,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 2,
-              width: 36,
-              height: 36,
-              fontSize: 20,
-              minWidth: 36,
-              minHeight: 36,
-              maxWidth: 36,
-              maxHeight: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="home-carousel-arrow home-carousel-arrow-left"
             onClick={handlePrevCarousel}
             aria-label="Previous announcement"
           >
-            <i className="lni lni-chevron-left" style={{ fontSize: 20 }}></i>
+            <i className="lni lni-chevron-left home-carousel-arrow-icon"></i>
           </button>
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 900,
-              textAlign: "center",
-              fontSize: "2.5rem",
-              fontWeight: 700,
-              color: "#131921",
-              letterSpacing: 1,
-              lineHeight: 1.2,
-              padding: "0 64px",
-              userSelect: "none",
-              boxSizing: "border-box",
-              margin: 0,
-              overflow: "hidden",
-            }}
-          >
+          <div className="home-carousel-message">
             {carouselMessages[carouselIndex]}
           </div>
-            <button
-            className="product-detail-thumbnail-arrow"
-            style={{
-              position: "absolute",
-              right: 32,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 2,
-              width: 36,
-              height: 36,
-              fontSize: 20,
-              minWidth: 36,
-              minHeight: 36,
-              maxWidth: 36,
-              maxHeight: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+          <button
+            className="home-carousel-arrow home-carousel-arrow-right"
             onClick={handleNextCarousel}
             aria-label="Next announcement"
           >
-            <i className="lni lni-chevron-right" style={{ fontSize: 20 }}></i>
-            </button>
+            <i className="lni lni-chevron-right home-carousel-arrow-icon"></i>
+          </button>
         </div>
       </div>
       {/* Main Home Content */}
-      <div className="product-list-container" style={{ maxWidth: 1200, flexDirection: "column", alignItems: "center" }}>
+      <div className="product-list-container home-main-content">
         {error && (
           <div className="product-list-error" role="alert" tabIndex={0} aria-live="polite">
             <span className="product-list-error-icon" aria-hidden="true">⚠</span>
             {error}
             <button
-            onClick={fetchProducts}
+              onClick={fetchProducts}
               className="product-list-retry-button"
               disabled={loading}
               aria-label="Retry loading products"
@@ -290,19 +225,17 @@ const Home = () => {
 
       {/* Category Section */}
       {!loading && !error && randomCategories.length > 0 && (
-        <section style={{ width: "100%", marginTop: 0 }}>
-          <h2 style={{ textAlign: "left", marginBottom: 24 }}>Categories</h2>
+        <section className="home-section home-categories-section">
+          <h2 className="home-section-title">Categories</h2>
           <div
-            className="product-list-product-grid"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}
+            className="product-list-product-grid home-categories-grid"
             role="list"
             aria-label={`${randomCategories.length} categories`}
           >
             {randomCategories.map((category) => (
               <div
                 key={category}
-                className="product-list-product-card"
-                style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 30, fontWeight: 600, fontSize: "1.1rem" }}
+                className="product-list-product-card home-category-card"
                 tabIndex={0}
                 role="listitem"
                 aria-label={`View products in ${category}`}
@@ -320,17 +253,17 @@ const Home = () => {
 
       {/* For You Section */}
       {!loading && !error && forYouProducts.length > 0 && (
-        <section style={{ width: "100%", marginTop: 24 }}>
-          <h2 style={{ textAlign: "left", marginBottom: 24 }}>For You</h2>
+        <section className="home-section home-for-you-section">
+          <h2 className="home-section-title">For You</h2>
           <div
-            className="product-list-product-grid"
+            className="product-list-product-grid home-for-you-grid"
             role="grid"
             aria-label={`${forYouProducts.length} personalized products`}
           >
             {forYouProducts.map((product) => (
               <article
                 key={product._id}
-                className={`product-list-product-card ${product.status_product === "out_of_stock" ? "out-of-stock" : ""}`}
+                className={`product-list-product-card home-for-you-card ${product.status_product === "out_of_stock" ? "out-of-stock" : ""}`}
                 onClick={() => handleProductClick(product._id)}
                 onKeyDown={(e) => handleKeyDown(e, product._id)}
                 role="gridcell"
@@ -365,17 +298,17 @@ const Home = () => {
 
       {/* Recommendations Section */}
       {!loading && !error && recommendedProducts.length > 0 && (
-        <section style={{ width: "100%", marginTop: 24 }}>
-          <h2 style={{ textAlign: "left", marginBottom: 24 }}>Recommendations</h2>
+        <section className="home-section home-recommendations-section">
+          <h2 className="home-section-title">Recommendations</h2>
           <div
-            className="product-list-product-grid"
+            className="product-list-product-grid home-recommendations-grid"
             role="grid"
             aria-label={`${recommendedProducts.length} recommended products`}
           >
             {recommendedProducts.map((product) => (
               <article
                 key={product._id}
-                className={`product-list-product-card ${product.status_product === "out_of_stock" ? "out-of-stock" : ""}`}
+                className={`product-list-product-card home-recommendation-card ${product.status_product === "out_of_stock" ? "out-of-stock" : ""}`}
                 onClick={() => handleProductClick(product._id)}
                 onKeyDown={(e) => handleKeyDown(e, product._id)}
                 role="gridcell"
@@ -405,10 +338,9 @@ const Home = () => {
               </article>
             ))}
           </div>
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 32 }}>
+          <div className="home-view-all-container">
             <button
-              className="product-detail-add-to-favorites"
-              style={{ minWidth: 180, fontSize: "1rem" }}
+              className="product-detail-add-to-favorites home-view-all-btn"
               onClick={handleViewAll}
             >
               View All

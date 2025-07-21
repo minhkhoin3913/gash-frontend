@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "../styles/Orders.css";
 import axios from "axios";
+import { io as socketIOClient } from "socket.io-client";
 
 // API client with interceptors
 const apiClient = axios.create({
@@ -44,17 +45,38 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 
 const Orders = () => {
   const { user, isAuthLoading } = useContext(AuthContext);
-  const [orders, setOrders] = useState([]);
+  console.log('[Orders] Component mounted');
+  const getUserId = (user) => user?._id || localStorage.getItem("user_id");
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Load cached orders and orderDetailsCache from localStorage if available
+  const [orders, setOrders] = useState(() => {
+    try {
+      const userId = getUserId(user);
+      if (!userId) return [];
+      const cached = localStorage.getItem(`orders_cache_${userId}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [orderDetailsCache, setOrderDetailsCache] = useState(() => {
+    try {
+      const cached = localStorage.getItem("order_details_cache");
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [orderDetails, setOrderDetails] = useState([]);
-  const [orderDetailsCache, setOrderDetailsCache] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [feedbackInputs, setFeedbackInputs] = useState({});
   const [feedbackFormVisible, setFeedbackFormVisible] = useState({});
-  const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDetail, setModalDetail] = useState(null); // { detail, order }
   const [modalInput, setModalInput] = useState("");
@@ -64,6 +86,11 @@ const Orders = () => {
   const [cancelTargetOrder, setCancelTargetOrder] = useState(null);
   const [cancelModalLoading, setCancelModalLoading] = useState(false);
   const [cancelModalError, setCancelModalError] = useState("");
+
+  // Add new state for order-level feedback modal
+  const [orderFeedbackModal, setOrderFeedbackModal] = useState({ visible: false, order: null, input: '', error: '', loading: false });
+  // Add new state for detail-level feedback modal
+  const [detailFeedbackModal, setDetailFeedbackModal] = useState({ visible: false, detail: null, input: '', error: '', loading: false });
 
   // Fetch orders
   const fetchOrders = useCallback(
@@ -75,18 +102,45 @@ const Orders = () => {
       setLoading(true);
       setError("");
 
+      // Only use cache if query is empty and not '__force_backend__'
+      if (!query || query === "") {
+        if (query !== "__force_backend__") {
+          const userId = getUserId(user);
+          if (userId) {
+            const cached = localStorage.getItem(`orders_cache_${userId}`);
+            if (cached) {
+              setOrders(JSON.parse(cached));
+              setLoading(false);
+              return;
+            }
+          }
+        }
+      }
+
       try {
         const token = localStorage.getItem("token");
+        console.log('[fetchOrders] user:', user);
+        console.log('[fetchOrders] token:', token);
         if (!token) throw new Error("No authentication token found");
 
-        const url = query
+        const url = query && query !== "__force_backend__"
           ? `/orders/search?acc_id=${user?._id}&q=${encodeURIComponent(query)}`
           : `/orders?acc_id=${user?._id}`;
+        const headers = { Authorization: `Bearer ${token}` };
+        console.log('[fetchOrders] url:', url);
+        console.log('[fetchOrders] headers:', headers);
         const response = await fetchWithRetry(url, {
           method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
         });
-        setOrders(Array.isArray(response) ? response : []);
+        console.log('[fetchOrders] response:', response);
+        const ordersData = Array.isArray(response) ? response : [];
+        setOrders(ordersData);
+        // Cache orders in localStorage if not a search
+        if ((!query || query === "__force_backend__") && user?._id) {
+          localStorage.setItem(`orders_cache_${user._id}`, JSON.stringify(ordersData));
+          localStorage.setItem("user_id", user._id);
+        }
       } catch (err) {
         setError(err.message || "Failed to load orders");
         console.error("Fetch orders error:", err);
@@ -97,6 +151,22 @@ const Orders = () => {
     [user]
   );
 
+  // Real-time updates: listen for orderUpdated events
+  useEffect(() => {
+    if (!user || !user._id) return;
+    const socket = socketIOClient(process.env.REACT_APP_API_URL || "http://localhost:5000");
+    const handleOrderUpdated = (data) => {
+      if (data && data.userId && data.userId.toString() === user._id.toString()) {
+        fetchOrders("");
+      }
+    };
+    socket.on("orderUpdated", handleOrderUpdated);
+    return () => {
+      socket.off("orderUpdated", handleOrderUpdated);
+      socket.disconnect();
+    };
+  }, [user, fetchOrders]);
+
   // Fetch order details
   const fetchOrderDetails = useCallback(
     async (orderId) => {
@@ -104,6 +174,17 @@ const Orders = () => {
       setLoading(true);
       setError("");
       setOrderDetails([]); // Clear previous order details
+
+      // Try to use cache
+      const cached = localStorage.getItem("order_details_cache");
+      if (cached) {
+        const cacheObj = JSON.parse(cached);
+        if (cacheObj[orderId]) {
+          setOrderDetails(cacheObj[orderId]);
+          setLoading(false);
+          return;
+        }
+      }
 
       try {
         const token = localStorage.getItem("token");
@@ -118,7 +199,11 @@ const Orders = () => {
         );
         const details = Array.isArray(response) ? response : [];
         setOrderDetails(details);
-        setOrderDetailsCache((prev) => ({ ...prev, [orderId]: details }));
+        setOrderDetailsCache((prev) => {
+          const updated = { ...prev, [orderId]: details };
+          localStorage.setItem("order_details_cache", JSON.stringify(updated));
+          return updated;
+        });
         // Reset feedback form visibility and inputs when fetching new details
         setFeedbackFormVisible({});
         setFeedbackInputs({});
@@ -228,20 +313,33 @@ const Orders = () => {
     (e) => {
       const query = e.target.value;
       setSearchQuery(query);
-      fetchOrders(query);
+      if (query.trim() === "") {
+        // If search is cleared, fetch all orders from backend (not cache)
+        fetchOrders("__force_backend__");
+      } else {
+        fetchOrders(query);
+      }
     },
     [fetchOrders]
   );
 
   // Handle authentication state
   useEffect(() => {
+    console.log('[Orders] useEffect for user/isAuthLoading', { user, isAuthLoading });
     if (isAuthLoading) return;
     if (!user && !localStorage.getItem("token")) {
       navigate("/login", { replace: true });
     } else if (user) {
-      fetchOrders();
+      localStorage.setItem("user_id", user._id);
+      if (location.state && location.state.forceFetch) {
+        fetchOrders("__force_backend__");
+        // Remove the state after using it
+        navigate(location.pathname, { replace: true, state: {} });
+      } else {
+        fetchOrders("");
+      }
     }
-  }, [user, isAuthLoading, navigate, fetchOrders]);
+  }, [user, isAuthLoading, navigate, fetchOrders, location]);
 
   // Fetch all order details for all orders after orders are loaded
   useEffect(() => {
@@ -266,7 +364,11 @@ const Orders = () => {
           }
         })
       );
-      setOrderDetailsCache(newCache);
+      setOrderDetailsCache((prev) => {
+        const updated = { ...prev, ...newCache };
+        localStorage.setItem("order_details_cache", JSON.stringify(updated));
+        return updated;
+      });
     };
     fetchAllOrderDetails();
   }, [orders, user]);
@@ -279,6 +381,19 @@ const Orders = () => {
       setOrderDetails([]); // Clear details if no cache entry
     }
   }, [selectedOrderId, orderDetailsCache]);
+
+  // Update localStorage when orderDetailsCache changes
+  useEffect(() => {
+    localStorage.setItem("order_details_cache", JSON.stringify(orderDetailsCache));
+  }, [orderDetailsCache]);
+
+  // Update localStorage when orders change
+  useEffect(() => {
+    const userId = getUserId(user);
+    if (userId) {
+      localStorage.setItem(`orders_cache_${userId}`, JSON.stringify(orders));
+    }
+  }, [orders, user]);
 
   // Toggle order detail visibility
   const handleToggleDetails = useCallback((orderId) => {
@@ -324,7 +439,7 @@ const Orders = () => {
   // Format price
   const formatPrice = useCallback((price) => {
     if (typeof price !== "number" || isNaN(price)) return "N/A";
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   }, []);
 
   // Check if feedback is allowed
@@ -335,6 +450,9 @@ const Orders = () => {
       order.shipping_status === "delivered"
     );
   };
+
+  // Helper: can provide feedback for a detail (only if parent order is eligible)
+  const canProvideDetailFeedback = (order) => canProvideFeedback(order);
 
   // Modal open handler
   const openFeedbackModal = useCallback((detail, order) => {
@@ -502,13 +620,13 @@ const Orders = () => {
       setToast({ type: "success", message: "Order cancelled successfully!" });
       setTimeout(() => setToast(null), 3000);
       closeCancelModal();
-      await fetchOrders(searchQuery);
+      await fetchOrders("__force_backend__"); // Force backend fetch for latest status
     } catch (err) {
       setCancelModalError(err.message || "Failed to cancel order");
     } finally {
       setCancelModalLoading(false);
     }
-  }, [cancelTargetOrder, fetchOrders, searchQuery, closeCancelModal]);
+  }, [cancelTargetOrder, fetchOrders, closeCancelModal]);
 
   // Helper: can cancel order
   const canCancelOrder = (order) => {
@@ -516,6 +634,128 @@ const Orders = () => {
       (order.order_status === "pending" || order.order_status === "confirmed") &&
       order.shipping_status === "not_shipped"
     );
+  };
+
+  // Handler for opening order-level feedback modal
+  const openOrderFeedbackModal = (order) => {
+    setOrderFeedbackModal({
+      visible: true,
+      order,
+      input: order.feedback_order && order.feedback_order !== 'None' ? order.feedback_order : '',
+      error: '',
+      loading: false
+    });
+  };
+  const closeOrderFeedbackModal = () => setOrderFeedbackModal({ visible: false, order: null, input: '', error: '', loading: false });
+
+  // Handler for submitting order-level feedback
+  const handleOrderFeedbackSubmit = async () => {
+    if (!orderFeedbackModal.input.trim()) {
+      setOrderFeedbackModal((prev) => ({ ...prev, error: 'Feedback cannot be empty' }));
+      return;
+    }
+    setOrderFeedbackModal((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      await apiClient.put(`/orders/${orderFeedbackModal.order._id}`, {
+        feedback_order: orderFeedbackModal.input.trim(),
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setOrders(prev => prev.map(o => o._id === orderFeedbackModal.order._id ? { ...o, feedback_order: orderFeedbackModal.input.trim() } : o));
+      setToast({ type: 'success', message: 'Shipping feedback submitted!' });
+      setTimeout(() => setToast(null), 3000);
+      closeOrderFeedbackModal();
+    } catch (err) {
+      setOrderFeedbackModal((prev) => ({ ...prev, error: err.message || 'Failed to submit feedback', loading: false }));
+    }
+  };
+  const handleOrderFeedbackDelete = async () => {
+    setOrderFeedbackModal((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      await apiClient.put(`/orders/${orderFeedbackModal.order._id}`, {
+        feedback_order: 'None',
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setOrders(prev => prev.map(o => o._id === orderFeedbackModal.order._id ? { ...o, feedback_order: 'None' } : o));
+      setToast({ type: 'success', message: 'Shipping feedback deleted!' });
+      setTimeout(() => setToast(null), 3000);
+      closeOrderFeedbackModal();
+    } catch (err) {
+      setOrderFeedbackModal((prev) => ({ ...prev, error: err.message || 'Failed to delete feedback', loading: false }));
+    }
+  };
+
+  // Handler for opening detail-level feedback modal
+  const openDetailFeedbackModal = (detail) => {
+    setDetailFeedbackModal({
+      visible: true,
+      detail,
+      input: detail.feedback_details && detail.feedback_details !== 'None' ? detail.feedback_details : '',
+      error: '',
+      loading: false
+    });
+  };
+  const closeDetailFeedbackModal = () => setDetailFeedbackModal({ visible: false, detail: null, input: '', error: '', loading: false });
+
+  // Handler for submitting detail-level feedback
+  const handleDetailFeedbackSubmit = async () => {
+    if (!detailFeedbackModal.input.trim()) {
+      setDetailFeedbackModal((prev) => ({ ...prev, error: 'Feedback cannot be empty' }));
+      return;
+    }
+    setDetailFeedbackModal((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      await apiClient.put(`/order-details/${detailFeedbackModal.detail._id}`, {
+        feedback_details: detailFeedbackModal.input.trim(),
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setOrderDetailsCache(prev => {
+        const updated = { ...prev };
+        if (selectedOrderId && updated[selectedOrderId]) {
+          updated[selectedOrderId] = updated[selectedOrderId].map(d =>
+            d._id === detailFeedbackModal.detail._id
+              ? { ...d, feedback_details: detailFeedbackModal.input.trim() }
+              : d
+          );
+        }
+        return updated;
+      });
+      setToast({ type: 'success', message: 'Product feedback submitted!' });
+      setTimeout(() => setToast(null), 3000);
+      closeDetailFeedbackModal();
+      if (selectedOrderId) await fetchOrderDetails(selectedOrderId);
+    } catch (err) {
+      setDetailFeedbackModal((prev) => ({ ...prev, error: err.message || 'Failed to submit feedback', loading: false }));
+    }
+  };
+  const handleDetailFeedbackDelete = async () => {
+    setDetailFeedbackModal((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      await apiClient.put(`/order-details/${detailFeedbackModal.detail._id}`, {
+        feedback_details: 'None',
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setOrderDetailsCache(prev => {
+        const updated = { ...prev };
+        if (selectedOrderId && updated[selectedOrderId]) {
+          updated[selectedOrderId] = updated[selectedOrderId].map(d =>
+            d._id === detailFeedbackModal.detail._id
+              ? { ...d, feedback_details: 'None' }
+              : d
+          );
+        }
+        return updated;
+      });
+      setToast({ type: 'success', message: 'Product feedback deleted!' });
+      setTimeout(() => setToast(null), 3000);
+      closeDetailFeedbackModal();
+      if (selectedOrderId) await fetchOrderDetails(selectedOrderId);
+    } catch (err) {
+      setDetailFeedbackModal((prev) => ({ ...prev, error: err.message || 'Failed to delete feedback', loading: false }));
+    }
   };
 
   // Show loading state while auth is being verified
@@ -530,6 +770,7 @@ const Orders = () => {
     );
   }
 
+  console.log('[Orders] Rendering Orders component');
   return (
     <div className="orders-container">
       {/* Toast Notification */}
@@ -650,14 +891,149 @@ const Orders = () => {
         </div>
       )}
 
-      <h1 className="orders-title">Your Orders</h1>
+      {orderFeedbackModal.visible && (
+        <div className="orders-modal-overlay" role="dialog" aria-modal="true">
+          <div className="orders-modal">
+            <h2 className="orders-modal-title">
+              {orderFeedbackModal.order?.feedback_order && orderFeedbackModal.order.feedback_order !== 'None' ? 'Edit Shipping Feedback' : 'Add Shipping Feedback'}
+            </h2>
+            <textarea
+              className="orders-modal-input"
+              value={orderFeedbackModal.input}
+              onChange={e => setOrderFeedbackModal(prev => ({ ...prev, input: e.target.value }))}
+              placeholder="Enter your shipping feedback here..."
+              disabled={orderFeedbackModal.loading}
+              aria-label="Shipping feedback input"
+              autoFocus
+            />
+            {orderFeedbackModal.error && (
+              <div className="orders-modal-error" role="alert">
+                {orderFeedbackModal.error}
+              </div>
+            )}
+            <div className="orders-modal-actions">
+              {orderFeedbackModal.order?.feedback_order && orderFeedbackModal.order.feedback_order !== 'None' ? (
+                <>
+                  <button
+                    className="orders-modal-change-btn"
+                    onClick={handleOrderFeedbackSubmit}
+                    disabled={orderFeedbackModal.loading || !orderFeedbackModal.input.trim()}
+                  >
+                    {orderFeedbackModal.loading ? 'Saving...' : 'Change'}
+                  </button>
+                  <button
+                    className="orders-modal-delete-btn"
+                    onClick={handleOrderFeedbackDelete}
+                    disabled={orderFeedbackModal.loading}
+                  >
+                    {orderFeedbackModal.loading ? 'Deleting...' : 'Delete'}
+                  </button>
+                  <button
+                    className="orders-modal-cancel-btn"
+                    onClick={closeOrderFeedbackModal}
+                    disabled={orderFeedbackModal.loading}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="orders-modal-add-btn"
+                    onClick={handleOrderFeedbackSubmit}
+                    disabled={orderFeedbackModal.loading || !orderFeedbackModal.input.trim()}
+                  >
+                    {orderFeedbackModal.loading ? 'Adding...' : 'Add'}
+                  </button>
+                  <button
+                    className="orders-modal-cancel-btn"
+                    onClick={closeOrderFeedbackModal}
+                    disabled={orderFeedbackModal.loading}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {detailFeedbackModal.visible && (
+        <div className="orders-modal-overlay" role="dialog" aria-modal="true">
+          <div className="orders-modal">
+            <h2 className="orders-modal-title">
+              {detailFeedbackModal.detail?.feedback_details && detailFeedbackModal.detail.feedback_details !== 'None' ? 'Edit Product Feedback' : 'Add Product Feedback'}
+            </h2>
+            <textarea
+              className="orders-modal-input"
+              value={detailFeedbackModal.input}
+              onChange={e => setDetailFeedbackModal(prev => ({ ...prev, input: e.target.value }))}
+              placeholder="Enter your product feedback here..."
+              disabled={detailFeedbackModal.loading}
+              aria-label="Product feedback input"
+              autoFocus
+            />
+            {detailFeedbackModal.error && (
+              <div className="orders-modal-error" role="alert">
+                {detailFeedbackModal.error}
+              </div>
+            )}
+            <div className="orders-modal-actions">
+              {detailFeedbackModal.detail?.feedback_details && detailFeedbackModal.detail.feedback_details !== 'None' ? (
+                <>
+                  <button
+                    className="orders-modal-change-btn"
+                    onClick={handleDetailFeedbackSubmit}
+                    disabled={detailFeedbackModal.loading || !detailFeedbackModal.input.trim()}
+                  >
+                    {detailFeedbackModal.loading ? 'Saving...' : 'Change'}
+                  </button>
+                  <button
+                    className="orders-modal-delete-btn"
+                    onClick={handleDetailFeedbackDelete}
+                    disabled={detailFeedbackModal.loading}
+                  >
+                    {detailFeedbackModal.loading ? 'Deleting...' : 'Delete'}
+                  </button>
+                  <button
+                    className="orders-modal-cancel-btn"
+                    onClick={closeDetailFeedbackModal}
+                    disabled={detailFeedbackModal.loading}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="orders-modal-add-btn"
+                    onClick={handleDetailFeedbackSubmit}
+                    disabled={detailFeedbackModal.loading || !detailFeedbackModal.input.trim()}
+                  >
+                    {detailFeedbackModal.loading ? 'Adding...' : 'Add'}
+                  </button>
+                  <button
+                    className="orders-modal-cancel-btn"
+                    onClick={closeDetailFeedbackModal}
+                    disabled={detailFeedbackModal.loading}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* <h1 className="orders-title">Your Orders</h1> */}
       {/* Search Bar */}
       <div className="orders-search-container">
         <input
           type="text"
           className="orders-search-input"
-          placeholder="Search orders by ID, status, or date (YYYY-MM-DD)"
-          value={searchQuery}
+          placeholder="Search by product name"
+          value={searchQuery || ""}
           onChange={handleSearchChange}
           aria-label="Search orders"
         />
@@ -783,6 +1159,30 @@ const Orders = () => {
                     <p className="orders-order-shipping">
                       Shipping: {formatStatus(order.shipping_status)}
                     </p>
+                    {/* User Feedback Display (only if eligible and feedback exists) */}
+                    {/* {canProvideFeedback(order) && (() => {
+                      const details = orderDetailsCache[order._id] || [];
+                      const feedbacks = details
+                        .map((d) => d.feedback_details)
+                        .filter((fb) => fb && fb !== "None");
+                      if (feedbacks.length === 0) return null;
+                      return (
+                        <div className="orders-order-feedback-list orders-order-date orders-order-shipping">
+                          <strong>Feedback:</strong>
+                          <ul className="orders-order-feedback-ul">
+                            {feedbacks.map((fb, idx) => (
+                              <li key={idx} className="orders-order-feedback-item">{fb}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })()} */}
+                    {order.feedback_order && order.feedback_order !== 'None' && (
+                      <div className="orders-order-feedback-list orders-order-date orders-order-shipping">
+                        <strong>Shipping Feedback:</strong>
+                        <div className="orders-order-feedback-item">{order.feedback_order}</div>
+                      </div>
+                    )}
                     <p className="orders-order-total">
                       Total: {formatPrice(order.totalPrice)}
                     </p>
@@ -812,36 +1212,10 @@ const Orders = () => {
                     ) : canProvideFeedback(order) && (
                       <button
                         className="orders-feedback-modal-btn"
-                        onClick={() => {
-                          const details = orderDetailsCache[order._id] || [];
-                          let targetDetail =
-                            details.find(
-                              (d) =>
-                                !d.feedback_details ||
-                                d.feedback_details === "None"
-                            ) || details[0];
-                          if (targetDetail)
-                            openFeedbackModal(targetDetail, order);
-                        }}
-                        aria-label={(() => {
-                          const details = orderDetailsCache[order._id] || [];
-                          const hasFeedback = details.some(
-                            (d) =>
-                              d.feedback_details &&
-                              d.feedback_details !== "None"
-                          );
-                          return hasFeedback ? "Edit Feedback" : "Add Feedback";
-                        })()}
+                        onClick={() => openOrderFeedbackModal(order)}
+                        aria-label={order.feedback_order && order.feedback_order !== 'None' ? 'Edit Shipping Feedback' : 'Add Shipping Feedback'}
                       >
-                        {(() => {
-                          const details = orderDetailsCache[order._id] || [];
-                          const hasFeedback = details.some(
-                            (d) =>
-                              d.feedback_details &&
-                              d.feedback_details !== "None"
-                          );
-                          return hasFeedback ? "Edit Feedback" : "Add Feedback";
-                        })()}
+                        {order.feedback_order && order.feedback_order !== 'None' ? 'Edit Shipping Feedback' : 'Add Shipping Feedback'}
                       </button>
                     )}
                   </div>
@@ -877,12 +1251,28 @@ const Orders = () => {
                               <p className="orders-detail-price">
                                 Unit Price: {formatPrice(detail.UnitPrice)}
                               </p>
-                            </div>
-                            <p className="orders-detail-total">
-                              {formatPrice(
-                                (detail.UnitPrice || 0) * (detail.Quantity || 0)
+                              {detail.feedback_details && detail.feedback_details !== 'None' && (
+                                <div className="orders-detail-feedback">
+                                  <strong>Product Feedback:</strong>
+                                  <div className="orders-order-feedback-item">{detail.feedback_details}</div>
+                                </div>
                               )}
-                            </p>
+                            </div>
+                            <div className="orders-detail-actions-col">
+                              <p className="orders-detail-total">
+                                {formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}
+                              </p>
+                              {canProvideDetailFeedback(order) && (
+                                <button
+                                  className="orders-feedback-modal-btn"
+                                  style={{ marginTop: 8 }}
+                                  onClick={() => openDetailFeedbackModal(detail)}
+                                  aria-label={detail.feedback_details && detail.feedback_details !== 'None' ? 'Edit Product Feedback' : 'Add Product Feedback'}
+                                >
+                                  {detail.feedback_details && detail.feedback_details !== 'None' ? 'Edit Product Feedback' : 'Add Product Feedback'}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

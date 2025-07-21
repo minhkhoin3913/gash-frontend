@@ -124,24 +124,36 @@ const OTPVerification = () => {
 
   return (
     <div className="otp-container">
+      {/* Toast error notification */}
+      {error && (
+        <div
+          className="otp-toast otp-toast-error"
+          role="alert"
+          tabIndex={0}
+          style={{ position: 'fixed', top: 16, right: 16, zIndex: 1000, minWidth: 220, maxWidth: 350 }}
+        >
+          <span className="otp-error-icon" aria-hidden="true">⚠</span>
+          {error}
+        </div>
+      )}
+      {/* Toast success notification */}
+      {success && (
+        <div
+          className="otp-toast otp-toast-success"
+          role="alert"
+          tabIndex={0}
+          style={{ position: 'fixed', top: 64, right: 16, zIndex: 1000, minWidth: 220, maxWidth: 350 }}
+        >
+          <span className="otp-success-icon" aria-hidden="true">✓</span>
+          {success}
+        </div>
+      )}
       <div className="otp-box">
         <h1 className="otp-title">Verify OTP</h1>
         <p className="otp-info">
           Enter the 6-digit OTP sent to {email} to{' '}
           {type === 'forgot-password' ? 'reset your password' : 'verify your email'}.
         </p>
-        {error && (
-          <div className="otp-error" id="error-message" role="alert" tabIndex={0}>
-            <span className="otp-error-icon" aria-hidden="true">⚠</span>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="otp-success" id="success-message" role="alert" tabIndex={0}>
-            <span className="otp-success-icon" aria-hidden="true">✓</span>
-            {success}
-          </div>
-        )}
         <form
           className="otp-form"
           onSubmit={handleSubmit}

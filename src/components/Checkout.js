@@ -198,7 +198,7 @@ const Checkout = () => {
         setToast({ type: 'success', message: 'Order placed successfully!' });
         setTimeout(() => {
           setToast(null);
-          navigate('/orders');
+          navigate('/orders', { state: { forceFetch: true } });
         }, 3000);
       } else if (paymentMethod === 'vnpay') {
         // Call backend to get VNPay payment URL (POST with JSON body)
@@ -234,7 +234,7 @@ const Checkout = () => {
   // Format price
   const formatPrice = useCallback((price) => {
     if (typeof price !== 'number' || isNaN(price)) return 'N/A';
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   }, []);
 
   // Render items for summary

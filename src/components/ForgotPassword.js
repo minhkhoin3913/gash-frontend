@@ -98,23 +98,21 @@ const ForgotPassword = () => {
 
   return (
     <div className="signup-container">
+      {/* Toast error notification */}
+      {error && (
+        <div
+          className="signup-toast signup-toast-error"
+          role="alert"
+          tabIndex={0}
+          style={{ position: 'fixed', top: 16, right: 16, zIndex: 1000, minWidth: 220, maxWidth: 350 }}
+        >
+          <span className="signup-error-icon" aria-hidden="true">⚠️</span>
+          {error}
+        </div>
+      )}
       <div className="signup-box">
         <h1 className="signup-title">Reset Your Password</h1>
         <p className="signup-info">Enter your email address to receive a password reset OTP.</p>
-        {error && (
-          <div className="signup-error" id="error-message" role="alert" tabIndex={0}>
-            <span className="signup-error-icon" aria-hidden="true">⚠️</span>
-            {error}{' '}
-            <button
-              type="button"
-              className="signup-resend-link"
-              onClick={handleSubmit}
-              disabled={isLoading}
-            >
-              Try again
-            </button>
-          </div>
-        )}
         <form
           className="signup-form"
           onSubmit={handleSubmit}
@@ -147,10 +145,8 @@ const ForgotPassword = () => {
           >
             <span aria-live="polite">
               {isLoading ? (
-                <>
-                  <span className="signup-loading-spinner" aria-hidden="true" />
-                  Sending OTP...
-                </>
+                // Removed spinner, only show text
+                'Sending OTP...'
               ) : (
                 'Continue'
               )}

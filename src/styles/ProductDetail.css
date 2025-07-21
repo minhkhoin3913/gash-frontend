@@ -499,6 +499,10 @@
 .product-detail-feedback-text {
   font-size: 0.875rem;
   line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-line;
+  width: 100%;
+  display: block;
 }
 
 /* ProductList error/loading styles for ProductDetail */
@@ -543,6 +547,16 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 8px;
+}
+
+.product-detail-view-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+.product-detail-view-more-btn {
+  min-width: 180px;
+  font-size: 1rem;
 }
 
 @media (max-width: 992px) {

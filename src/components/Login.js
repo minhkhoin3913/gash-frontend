@@ -92,20 +92,20 @@ const Login = () => {
 
   return (
     <div className="login-container">
+      {/* Toast error notification */}
+      {error && (
+        <div
+          className="login-toast login-toast-error"
+          role="alert"
+          tabIndex={0}
+          style={{ position: 'fixed', top: 16, right: 16, zIndex: 1000, minWidth: 220, maxWidth: 350 }}
+        >
+          <span className="login-error-icon" aria-hidden="true">⚠</span>
+          {error}
+        </div>
+      )}
       <div className="login-box">
         <h1 className="login-title">Sign In</h1>
-        {error && (
-          <div
-            className="login-error"
-            id="error-message"
-            role="alert"
-            tabIndex={0}
-            ref={errorRef}
-          >
-            <span className="login-error-icon" aria-hidden="true">⚠</span>
-            {error}
-          </div>
-        )}
         <form
           className="login-form"
           onSubmit={handleSubmit}
@@ -159,10 +159,8 @@ const Login = () => {
           >
             <span aria-live="polite">
               {isLoading ? (
-                <>
-                  <span className="login-loading-spinner" aria-hidden="true" />
-                  Signing In...
-                </>
+                // Removed spinner, only show text
+                "Signing In..."
               ) : (
                 "Sign In"
               )}

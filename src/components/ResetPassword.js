@@ -87,21 +87,33 @@ const ResetPassword = () => {
 
   return (
     <div className="reset-password-container">
+      {/* Toast error notification */}
+      {error && (
+        <div
+          className="reset-password-toast reset-password-toast-error"
+          role="alert"
+          tabIndex={0}
+          style={{ position: 'fixed', top: 16, right: 16, zIndex: 1000, minWidth: 220, maxWidth: 350 }}
+        >
+          <span className="reset-password-error-icon" aria-hidden="true">⚠</span>
+          {error}
+        </div>
+      )}
+      {/* Toast success notification */}
+      {success && (
+        <div
+          className="reset-password-toast reset-password-toast-success"
+          role="alert"
+          tabIndex={0}
+          style={{ position: 'fixed', top: 64, right: 16, zIndex: 1000, minWidth: 220, maxWidth: 350 }}
+        >
+          <span className="reset-password-success-icon" aria-hidden="true">✓</span>
+          {success}
+        </div>
+      )}
       <div className="reset-password-box">
         <h1 className="reset-password-title">Reset Your Password</h1>
         <p className="reset-password-info">Enter a new password for {formData.email}</p>
-        {error && (
-          <div className="reset-password-error" id="error-message" role="alert">
-            <span className="reset-password-error-icon" aria-hidden="true">⚠</span>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="reset-password-success" id="success-message" role="alert">
-            <span className="reset-password-success-icon" aria-hidden="true">✓</span>
-            {success}
-          </div>
-        )}
         <form
           className="reset-password-form"
           onSubmit={handleSubmit}
@@ -134,10 +146,8 @@ const ResetPassword = () => {
             aria-busy={isLoading}
           >
             {isLoading ? (
-              <>
-                <span className="reset-password-loading-spinner" aria-hidden="true" />
-                Resetting Password...
-              </>
+              // Removed spinner, only show text
+              'Resetting Password...'
             ) : (
               'Reset Password'
             )}

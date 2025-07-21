@@ -293,10 +293,8 @@ const Profile = () => {
                   aria-busy={loading}
                 >
                   {loading ? (
-                    <>
-                      <span className="profile-loading-spinner" aria-hidden="true"></span>
-                      Updating...
-                    </>
+                    // Removed spinner, only show text
+                    'Updating...'
                   ) : (
                     'Confirm'
                   )}
@@ -327,10 +325,8 @@ const Profile = () => {
                     aria-busy={loading}
                   >
                     {loading ? (
-                      <>
-                        <span className="profile-loading-spinner" aria-hidden="true"></span>
-                        Deleting...
-                      </>
+                      // Removed spinner, only show text
+                      'Deleting...'
                     ) : (
                       'Confirm'
                     )}

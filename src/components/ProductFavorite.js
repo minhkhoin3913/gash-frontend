@@ -128,7 +128,7 @@ const ProductFavorite = () => {
   // Helpers
   const formatPrice = useCallback((price) => {
     if (typeof price !== "number" || isNaN(price)) return "N/A";
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   }, []);
 
   // Focus error notification

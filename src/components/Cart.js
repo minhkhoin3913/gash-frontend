@@ -140,7 +140,7 @@ const Cart = () => {
   // Format price
   const formatPrice = useCallback((price) => {
     if (typeof price !== 'number' || isNaN(price)) return 'N/A';
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   }, []);
 
   // Total price
@@ -185,7 +185,7 @@ const Cart = () => {
           {toast.message}
         </div>
       )}
-      <h1 className="cart-title">Your Cart</h1>
+      {/* <h1 className="cart-title">Your Cart</h1> */}
       {error && (
         <div className="product-list-error" role="alert" tabIndex={0} aria-live="polite">
           <span className="product-list-error-icon" aria-hidden="true">⚠</span>

@@ -5,51 +5,51 @@ import { Pencil, Clock, MessageSquare } from "lucide-react";
 const BlogPost = () => {
   // Mock data similar to the original
   const featuredPost = {
-    image: "/images/ski-goggles.png",
-    category: "Blog",
-    title: "Single Ranking Vertical Style",
-    author: "JOHN MAXWELL",
-    date: "04 DEC 2015",
-    comments: 0,
+    image: "https://n7media.coolmate.me/uploads/June2025/mceclip9_63.jpg",
+    category: "Style Guide",
+    title: "How to Build a Timeless Wardrobe: Essentials for Every Season",
+    author: "LINH NGUYEN",
+    date: "12 JUN 2024",
+    comments: 5,
     content:
-      "Sed posuere consectetur est at lobortis. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+      "Discover the must-have pieces that form the foundation of a versatile wardrobe. From classic white shirts to the perfect pair of jeans, we break down the essentials that never go out of style. Learn how to mix and match for any occasion, and get tips on caring for your favorite apparel so they last for years. Whether you're updating your closet or starting fresh, these timeless picks will keep you looking sharp all year round.",
   };
 
   const recentPosts = [
     {
       id: 1,
-      image: "https://picsum.photos/60",
-      title: "Magna Dapibus Sollicitudin Consectetur Lorem",
-      author: "Paul Frank",
-      date: "07 Dec 2015",
+      image: "https://n7media.coolmate.me/uploads/June2025/quan-short-chino-nam-7inch-1-8-den_91.jpg?aio=w-585",
+      title: "Top 5 Summer Shorts for Effortless Comfort",
+      author: "Mai Tran",
+      date: "10 Jun 2024",
     },
     {
       id: 2,
-      image: "https://picsum.photos/60",
-      title: "Adipiscing Nibh Vulputate Tristique Tellus",
-      author: "John Maxwell",
-      date: "04 Dec 2015",
+      image: "https://n7media.coolmate.me/uploads/June2025/quan-short-chino-nam-7inch-1-8-den_91.jpg?aio=w-585",
+      title: "Mix & Match: Creating Outfits with Statement Tees",
+      author: "Linh Nguyen",
+      date: "08 Jun 2024",
     },
     {
       id: 3,
-      image: "https://picsum.photos/60",
-      title: "Dolor Ligula Pharetra Commodo Porta",
-      author: "John Maxwell",
-      date: "04 Dec 2015",
+      image: "https://n7media.coolmate.me/uploads/June2025/ao-polo-premium-aircool-1167-trang_10.jpg?aio=w-585",
+      title: "The Rise of Polo Shirts: From Sport to Street Style",
+      author: "Huy Le",
+      date: "05 Jun 2024",
     },
     {
       id: 4,
-      image: "https://picsum.photos/60",
-      title: "Malesuada Pellentesque Cras Purus Vehicula",
-      author: "Paul Frank",
-      date: "04 Dec 2015",
+      image: "https://n7media.coolmate.me/uploads/March2025/ao-in-cotton-cs-nu-cuoi-2d-den_85.jpg?aio=w-355",
+      title: "Graphic Tees: Express Yourself with Every Outfit",
+      author: "Mai Tran",
+      date: "03 Jun 2024",
     },
     {
       id: 5,
-      image: "https://picsum.photos/60",
-      title: "Condimentum Sit Inceptos Fringilla Lorem",
-      author: "John Maxwell",
-      date: "04 Dec 2015",
+      image: "https://n7media.coolmate.me/uploads/June2024/24CMAW.AT025.26.jpg?aio=w-585",
+      title: "How to Care for Your Favorite Denim Pieces",
+      author: "Huy Le",
+      date: "01 Jun 2024",
     },
   ];
 

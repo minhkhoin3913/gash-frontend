@@ -275,6 +275,104 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.home-carousel-outer {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.home-carousel {
+  width: 100%;
+  min-height: 340px;
+  height: 36vw;
+  max-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, #f0c14b 0%, #fffbe6 100%);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.home-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.home-carousel-arrow-left { left: 32px; }
+.home-carousel-arrow-right { right: 32px; }
+.home-carousel-arrow-icon { font-size: 20px; }
+
+.home-carousel-message {
+  width: 100%;
+  max-width: 900px;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #131921;
+  letter-spacing: 1px;
+  line-height: 1.2;
+  padding: 0 64px;
+  user-select: none;
+  box-sizing: border-box;
+  margin: 0;
+  overflow: hidden;
+}
+
+.home-main-content {
+  max-width: 1200px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home-section {
+  width: 100%;
+  margin-top: 24px;
+}
+.home-section.home-categories-section { margin-top: 0; }
+.home-section-title {
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.home-categories-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+}
+.home-category-card {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.home-view-all-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+.home-view-all-btn {
+  min-width: 180px;
+  font-size: 1rem;
+}
+
 @media (max-width: 768px) {
   .product-list-container { flex-direction: column; padding: 8px; }
   .product-list-sidebar { width: 100%; padding: 12px 0; border-right: none; border-bottom: 2px solid var(--amazon-border); }
@@ -283,6 +381,9 @@
   .product-list-product-card img { max-height: 140px; }
   .product-list-product-card h2 { font-size: 0.875rem; min-height: 2.4em; }
   .product-list-price { font-size: 1rem; }
+  .home-carousel-message { font-size: 1.5rem; padding: 0 16px; }
+  .home-carousel { min-height: 180px; height: 40vw; max-height: 220px; }
+  .home-section-title { font-size: 1.1rem; }
 }
 
 @media (max-width: 480px) {

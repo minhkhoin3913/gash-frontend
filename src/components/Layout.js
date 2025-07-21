@@ -284,12 +284,8 @@ const Layout = ({ children }) => {
   }, [user, navigate]);
 
   const handleNotificationsClick = useCallback(() => {
-    if (user) {
-      navigate('/notifications');
-    } else {
-      navigate('/login', { state: { from: '/notifications' } });
-    }
-  }, [user, navigate]);
+    alert('Coming soon!');
+  }, []);
 
   const handleOrdersClick = useCallback(() => {
     if (user) {
@@ -407,7 +403,7 @@ const Layout = ({ children }) => {
   // Format price
   const formatPrice = useCallback((price) => {
     if (typeof price !== 'number' || isNaN(price)) return 'N/A';
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   }, []);
 
   return (

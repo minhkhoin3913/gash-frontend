@@ -177,10 +177,8 @@ const Signup = () => {
           >
             <span aria-live="polite">
               {isLoading ? (
-                <>
-                  <span className="signup-loading-spinner" aria-hidden="true" />
-                  Sending OTP...
-                </>
+                // Removed spinner, only show text
+                'Sending OTP...'
               ) : (
                 'Continue'
               )}

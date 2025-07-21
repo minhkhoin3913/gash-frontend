@@ -189,6 +189,34 @@
   outline-offset: 2px;
 }
 
+.signup-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: 2px solid var(--amazon-border);
+  min-width: 220px;
+  max-width: 350px;
+  text-align: left;
+  animation: fadein 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.signup-toast-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border-color: #f5c6cb;
+}
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
   .signup-container {
     padding: 12px;

@@ -117,6 +117,7 @@ const ProductDetail = () => {
   const [images, setImages] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [thumbnailIndex, setThumbnailIndex] = useState(0);
+  const [feedbacksToShow, setFeedbacksToShow] = useState(5);
 
   // Local storage
   const [storedState, setStoredState] = useLocalStorage(DETAIL_STORAGE_KEY, {});
@@ -255,6 +256,7 @@ const ProductDetail = () => {
     fetchProductAndVariants();
     fetchFeedbacks();
     fetchFavorites();
+    setFeedbacksToShow(5); // Reset shown feedbacks when product changes
     // Only depend on id and the fetch functions themselves
   }, [id, fetchFeedbacks, fetchFavorites, fetchProductAndVariants]);
 
@@ -509,7 +511,7 @@ const ProductDetail = () => {
   // Helpers
   const formatPrice = useCallback((price) => {
     if (typeof price !== "number" || isNaN(price)) return "N/A";
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   }, []);
 
   const formatDate = useCallback((dateString) => {
@@ -838,52 +840,65 @@ const ProductDetail = () => {
           <p className="product-detail-feedback-empty">No Feedback Available</p>
         )}
         {!feedbackLoading && !feedbackError && feedbacks.length > 0 && (
-          <div className="product-detail-feedback-list" role="list">
-            {feedbacks.map((feedback) => (
-              <div
-                key={feedback._id}
-                className="product-detail-feedback-item"
-                role="listitem"
-              >
-                <div className="product-detail-feedback-header">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <img
-                      src={feedback.order_id?.acc_id?.image}
-                      alt={
-                        feedback.order_id?.acc_id?.username
-                          ? `${feedback.order_id.acc_id.username}'s profile picture`
-                          : 'Default profile picture'
-                      }
-                      style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #d5d9d9' }}
-                    />
-                    <span className="product-detail-feedback-username" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                    {feedback.order_id?.acc_id?.username || "Anonymous"}
-                  </span>
-                  </span>
-                  <span className="product-detail-feedback-date" style={{ alignSelf: 'center', display: 'flex', alignItems: 'center', height: '100%' }}>
-                    {formatDate(feedback.order_id?.orderDate)}
-                  </span>
+          <>
+            <div className="product-detail-feedback-list" role="list">
+              {feedbacks.slice(0, feedbacksToShow).map((feedback) => (
+                <div
+                  key={feedback._id}
+                  className="product-detail-feedback-item"
+                  role="listitem"
+                >
+                  <div className="product-detail-feedback-header">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <img
+                        src={feedback.order_id?.acc_id?.image}
+                        alt={
+                          feedback.order_id?.acc_id?.username
+                            ? `${feedback.order_id.acc_id.username}'s profile picture`
+                            : 'Default profile picture'
+                        }
+                        style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #d5d9d9' }}
+                      />
+                      <span className="product-detail-feedback-username" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                      {feedback.order_id?.acc_id?.username || "Anonymous"}
+                    </span>
+                    </span>
+                    <span className="product-detail-feedback-date" style={{ alignSelf: 'center', display: 'flex', alignItems: 'center', height: '100%' }}>
+                      {formatDate(feedback.order_id?.orderDate)}
+                    </span>
+                  </div>
+                  <div className="product-detail-feedback-details">
+                    <p>
+                      <strong>Product:</strong>{' '}
+                      {feedback.variant_id?.pro_id?.pro_name || 'N/A'}
+                    </p>
+                    <p>
+                      <strong>Color:</strong>{' '}
+                      {feedback.variant_id?.color_id?.color_name || 'N/A'}
+                    </p>
+                    <p>
+                      <strong>Size:</strong>{' '}
+                      {feedback.variant_id?.size_id?.size_name || 'N/A'}
+                    </p>
+                  </div>
+                  <p className="product-detail-feedback-text">
+                    {feedback.feedback_details || 'No feedback provided'}
+                  </p>
                 </div>
-                <div className="product-detail-feedback-details">
-                  <p>
-                    <strong>Product:</strong>{" "}
-                    {feedback.variant_id?.pro_id?.pro_name || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Color:</strong>{" "}
-                    {feedback.variant_id?.color_id?.color_name || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Size:</strong>{" "}
-                    {feedback.variant_id?.size_id?.size_name || "N/A"}
-                  </p>
-                </div>
-                <p className="product-detail-feedback-text">
-                  {feedback.feedback_details || "No feedback provided"}
-                </p>
+              ))}
+            </div>
+            {feedbacks.length > feedbacksToShow && (
+              <div className="product-detail-view-more-container">
+                <button
+                  className="product-detail-add-to-favorites product-detail-view-more-btn"
+                  onClick={() => setFeedbacksToShow((prev) => prev + 5)}
+                  type="button"
+                >
+                  View More
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
