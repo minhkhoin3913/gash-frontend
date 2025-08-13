@@ -88,39 +88,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.orders-error {
-  color: var(--amazon-error);
-  background-color: #fff5f6;
-  border: 2px solid #f5c6cb;
-  padding: 32px;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.875rem;
-}
-.orders-error-icon {
-  font-size: 1.125rem;
-}
-.orders-retry-button {
-  padding: 6px 12px;
-  background: none;
-  border: 2px solid var(--amazon-border);
-  color: var(--amazon-link);
-  font-size: 0.875rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-}
-.orders-retry-button:hover,
-.orders-retry-button:focus {
-  background-color: var(--amazon-secondary-bg);
-  border-color: var(--amazon-link);
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
-}
-
+.orders-error,
 .orders-loading {
   text-align: center;
   font-size: 0.875rem;
@@ -131,7 +99,27 @@
   margin-bottom: 16px;
   width: 100%;
   box-sizing: border-box;
-  min-height: 100px;
+  height: 114px;
+}
+.orders-error {
+  color: var(--amazon-error);
+  background-color: #fff5f6;
+  border-color: #f5c6cb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.orders-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.orders-error-icon {
+  font-size: 1.125rem;
 }
 .orders-loading-spinner {
   width: 24px;
@@ -180,8 +168,8 @@
 
 .orders-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  grid-template-columns: 1fr;
+  /* gap: 2rem; */
 }
 
 @media (max-width: 768px) {
@@ -289,8 +277,14 @@
 .orders-detail-item {
   display: flex;
   justify-content: space-between;
-  border-bottom: 2px solid var(--amazon-border);
   padding: 8px;
+}
+.orders-detail-separator {
+  height: 2px;
+  background: var(--amazon-border);
+  width: 100%;
+  margin: 0 0 0 0;
+  border: none;
 }
 .orders-detail-item:last-child {
   border-bottom: none;
@@ -821,6 +815,7 @@
   .orders-order-card,
   .orders-details-section {
     border-width: 2px;
+
   }
   .orders-retry-button,
   .orders-continue-shopping-button,
@@ -869,4 +864,28 @@
   max-width: 220px;
   width: 100%;
   box-sizing: border-box;
+}
+
+.orders-retry-button {
+  padding: 6px 12px;
+  background: none;
+  border: 2px solid var(--amazon-border);
+  color: var(--amazon-link);
+  font-size: 0.875rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.orders-retry-button:hover,
+.orders-retry-button:focus {
+  background-color: var(--amazon-secondary-bg);
+  border-color: var(--amazon-link);
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+.orders-retry-button:disabled {
+  background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
 }

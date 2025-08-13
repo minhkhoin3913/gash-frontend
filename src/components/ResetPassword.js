@@ -43,7 +43,8 @@ const ResetPassword = () => {
   }, []);
 
   const validateForm = useCallback(() => {
-    const { newPassword, repeatPassword } = formData;
+    const newPassword = formData.newPassword.trim();
+    const repeatPassword = formData.repeatPassword.trim();
     if (newPassword.length < 8) return 'Password must be at least 8 characters long';
     if (newPassword !== repeatPassword) return 'Passwords do not match';
     return '';

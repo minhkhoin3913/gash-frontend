@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "../styles/Orders.css";
 import axios from "axios";
-import { io as socketIOClient } from "socket.io-client";
+import { useRef } from "react";
+import { io } from "socket.io-client";
 
 // API client with interceptors
 const apiClient = axios.create({
@@ -49,6 +50,7 @@ const Orders = () => {
   const getUserId = (user) => user?._id || localStorage.getItem("user_id");
   const location = useLocation();
   const navigate = useNavigate();
+  const socketRef = useRef(null);
 
   // Load cached orders and orderDetailsCache from localStorage if available
   const [orders, setOrders] = useState(() => {
@@ -102,70 +104,53 @@ const Orders = () => {
       setLoading(true);
       setError("");
 
-      // Only use cache if query is empty and not '__force_backend__'
-      if (!query || query === "") {
-        if (query !== "__force_backend__") {
-          const userId = getUserId(user);
-          if (userId) {
-            const cached = localStorage.getItem(`orders_cache_${userId}`);
-            if (cached) {
-              setOrders(JSON.parse(cached));
-              setLoading(false);
-              return;
-            }
-          }
-        }
-      }
-
+      // Always try to fetch from backend first
+      let fetched = false;
       try {
         const token = localStorage.getItem("token");
-        console.log('[fetchOrders] user:', user);
-        console.log('[fetchOrders] token:', token);
         if (!token) throw new Error("No authentication token found");
-
-        const url = query && query !== "__force_backend__"
-          ? `/orders/search?acc_id=${user?._id}&q=${encodeURIComponent(query)}`
-          : `/orders?acc_id=${user?._id}`;
+        let url = "";
+        // Check if query matches DD/MM/YYYY
+        const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+        if (query && dateRegex.test(query.trim())) {
+          url = `/orders/search?acc_id=${user?._id}&q=${encodeURIComponent(query.trim())}`;
+        } else if (query && query.trim() !== "") {
+          url = `/orders/search?acc_id=${user?._id}&q=${encodeURIComponent(query)}`;
+        } else {
+          url = `/orders?acc_id=${user?._id}`;
+        }
         const headers = { Authorization: `Bearer ${token}` };
-        console.log('[fetchOrders] url:', url);
-        console.log('[fetchOrders] headers:', headers);
         const response = await fetchWithRetry(url, {
           method: "GET",
           headers,
         });
-        console.log('[fetchOrders] response:', response);
         const ordersData = Array.isArray(response) ? response : [];
         setOrders(ordersData);
-        // Cache orders in localStorage if not a search
-        if ((!query || query === "__force_backend__") && user?._id) {
+        // Only cache if not a search
+        if (!query || query.trim() === "") {
           localStorage.setItem(`orders_cache_${user._id}`, JSON.stringify(ordersData));
           localStorage.setItem("user_id", user._id);
         }
+        fetched = true;
       } catch (err) {
         setError(err.message || "Failed to load orders");
         console.error("Fetch orders error:", err);
       } finally {
         setLoading(false);
       }
+      // If fetch failed and not a search, try cache as fallback
+      if (!fetched && (!query || query.trim() === "")) {
+        const userId = getUserId(user);
+        if (userId) {
+          const cached = localStorage.getItem(`orders_cache_${userId}`);
+          if (cached) {
+            setOrders(JSON.parse(cached));
+          }
+        }
+      }
     },
     [user]
   );
-
-  // Real-time updates: listen for orderUpdated events
-  useEffect(() => {
-    if (!user || !user._id) return;
-    const socket = socketIOClient(process.env.REACT_APP_API_URL || "http://localhost:5000");
-    const handleOrderUpdated = (data) => {
-      if (data && data.userId && data.userId.toString() === user._id.toString()) {
-        fetchOrders("");
-      }
-    };
-    socket.on("orderUpdated", handleOrderUpdated);
-    return () => {
-      socket.off("orderUpdated", handleOrderUpdated);
-      socket.disconnect();
-    };
-  }, [user, fetchOrders]);
 
   // Fetch order details
   const fetchOrderDetails = useCallback(
@@ -313,10 +298,16 @@ const Orders = () => {
     (e) => {
       const query = e.target.value;
       setSearchQuery(query);
-      if (query.trim() === "") {
-        // If search is cleared, fetch all orders from backend (not cache)
-        fetchOrders("__force_backend__");
+      // Check if query matches DD/MM/YYYY
+      const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+      if (dateRegex.test(query.trim())) {
+        // Send as date search
+        fetchOrders(query.trim());
+      } else if (query.trim() === "") {
+        // If search is cleared, fetch all orders from backend
+        fetchOrders("");
       } else {
+        // Product name or other search
         fetchOrders(query);
       }
     },
@@ -394,6 +385,31 @@ const Orders = () => {
       localStorage.setItem(`orders_cache_${userId}`, JSON.stringify(orders));
     }
   }, [orders, user]);
+
+  // Real-time order status updates
+  useEffect(() => {
+    if (!user?._id) return;
+    if (!socketRef.current) {
+      socketRef.current = io(process.env.REACT_APP_API_URL || "http://localhost:5000", {
+        transports: ["websocket"],
+        withCredentials: true,
+      });
+    }
+    const socket = socketRef.current;
+    // Listen for order updates for this user
+    const handleOrderUpdated = (data) => {
+      if (data && data.userId && data.userId === user._id) {
+        // Refetch orders from backend and update cache
+        fetchOrders("");
+      }
+    };
+    socket.on("orderUpdated", handleOrderUpdated);
+    return () => {
+      socket.off("orderUpdated", handleOrderUpdated);
+      // Optionally disconnect socket on unmount
+      // socket.disconnect();
+    };
+  }, [user, fetchOrders]);
 
   // Toggle order detail visibility
   const handleToggleDetails = useCallback((orderId) => {
@@ -620,7 +636,7 @@ const Orders = () => {
       setToast({ type: "success", message: "Order cancelled successfully!" });
       setTimeout(() => setToast(null), 3000);
       closeCancelModal();
-      await fetchOrders("__force_backend__"); // Force backend fetch for latest status
+      await fetchOrders(""); // Force backend fetch for latest status
     } catch (err) {
       setCancelModalError(err.message || "Failed to cancel order");
     } finally {
@@ -1032,7 +1048,7 @@ const Orders = () => {
         <input
           type="text"
           className="orders-search-input"
-          placeholder="Search by product name"
+          placeholder="Search by product name, Order ID or date (DD/MM/YYYY)"
           value={searchQuery || ""}
           onChange={handleSearchChange}
           aria-label="Search orders"
@@ -1151,10 +1167,10 @@ const Orders = () => {
                       </span>
                     </div>
                     <p className="orders-order-date">
-                      Date:{" "}
-                      {order.orderDate
-                        ? new Date(order.orderDate).toLocaleDateString()
-                        : "N/A"}
+                      Order ID: {order._id}
+                    </p>
+                    <p className="orders-order-date">
+                      Date: {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : "N/A"}
                     </p>
                     <p className="orders-order-shipping">
                       Shipping: {formatStatus(order.shipping_status)}
@@ -1231,49 +1247,47 @@ const Orders = () => {
                       </p>
                     ) : (
                       <div className="orders-details-list">
-                        {orderDetails.map((detail) => (
-                          <div key={detail._id} className="orders-detail-item">
-                            <div className="orders-detail-info">
-                              <p className="orders-detail-name">
-                                {detail.variant_id?.pro_id?.pro_name ||
-                                  "Unnamed Product"}
-                              </p>
-                              <p className="orders-detail-variant">
-                                Color:{" "}
-                                {detail.variant_id?.color_id?.color_name ||
-                                  "N/A"}
-                                , Size:{" "}
-                                {detail.variant_id?.size_id?.size_name || "N/A"}
-                              </p>
-                              <p className="orders-detail-quantity">
-                                Quantity: {detail.Quantity || 0}
-                              </p>
-                              <p className="orders-detail-price">
-                                Unit Price: {formatPrice(detail.UnitPrice)}
-                              </p>
-                              {detail.feedback_details && detail.feedback_details !== 'None' && (
-                                <div className="orders-detail-feedback">
-                                  <strong>Product Feedback:</strong>
-                                  <div className="orders-order-feedback-item">{detail.feedback_details}</div>
-                                </div>
-                              )}
+                        {orderDetails.map((detail, idx) => (
+                          <React.Fragment key={detail._id}>
+                            <div className="orders-detail-item">
+                              <div className="orders-detail-info">
+                                <p className="orders-detail-name">
+                                  {detail.variant_id?.pro_id?.pro_name || "Unnamed Product"}
+                                </p>
+                                <p className="orders-detail-variant">
+                                  Color: {detail.variant_id?.color_id?.color_name || "N/A"}, Size: {detail.variant_id?.size_id?.size_name || "N/A"}
+                                </p>
+                                <p className="orders-detail-quantity">
+                                  Quantity: {detail.Quantity || 0}
+                                </p>
+                                <p className="orders-detail-price">
+                                  Unit Price: {formatPrice(detail.UnitPrice)}
+                                </p>
+                                {detail.feedback_details && detail.feedback_details !== 'None' && (
+                                  <div className="orders-detail-feedback">
+                                    <strong>Product Feedback:</strong>
+                                    <div className="orders-order-feedback-item">{detail.feedback_details}</div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="orders-detail-actions-col">
+                                <p className="orders-detail-total">
+                                  {formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}
+                                </p>
+                                {canProvideDetailFeedback(order) && (
+                                  <button
+                                    className="orders-feedback-modal-btn"
+                                    style={{ marginTop: 8 }}
+                                    onClick={() => openDetailFeedbackModal(detail)}
+                                    aria-label={detail.feedback_details && detail.feedback_details !== 'None' ? 'Edit Product Feedback' : 'Add Product Feedback'}
+                                  >
+                                    {detail.feedback_details && detail.feedback_details !== 'None' ? 'Edit Product Feedback' : 'Add Product Feedback'}
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <div className="orders-detail-actions-col">
-                              <p className="orders-detail-total">
-                                {formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}
-                              </p>
-                              {canProvideDetailFeedback(order) && (
-                                <button
-                                  className="orders-feedback-modal-btn"
-                                  style={{ marginTop: 8 }}
-                                  onClick={() => openDetailFeedbackModal(detail)}
-                                  aria-label={detail.feedback_details && detail.feedback_details !== 'None' ? 'Edit Product Feedback' : 'Add Product Feedback'}
-                                >
-                                  {detail.feedback_details && detail.feedback_details !== 'None' ? 'Edit Product Feedback' : 'Add Product Feedback'}
-                                </button>
-                              )}
-                            </div>
-                          </div>
+                            {idx < orderDetails.length - 1 && <div className="orders-detail-separator" />}
+                          </React.Fragment>
                         ))}
                       </div>
                     )}

@@ -135,9 +135,25 @@ const Checkout = () => {
       return;
     }
 
-    if (!formData.addressReceive || !formData.phone || !formData.username) {
-      setError('Please fill in all required fields');
-      setToast({ type: 'error', message: 'Please fill in all required fields' });
+    // Trim and validate fields
+    const username = formData.username.trim();
+    const addressReceive = formData.addressReceive.trim();
+    const phone = formData.phone.trim();
+    if (!username || username.length < 3 || username.length > 30) {
+      setError('Username must be 3-30 characters');
+      setToast({ type: 'error', message: 'Username must be 3-30 characters' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    if (!addressReceive || addressReceive.length > 100) {
+      setError('Address is required and cannot exceed 100 characters');
+      setToast({ type: 'error', message: 'Address is required and cannot exceed 100 characters' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    if (!phone || !/^\d{10}$/.test(phone)) {
+      setError('Phone number must be exactly 10 digits');
+      setToast({ type: 'error', message: 'Phone number must be exactly 10 digits' });
       setTimeout(() => setToast(null), 3000);
       return;
     }
@@ -198,7 +214,7 @@ const Checkout = () => {
         setToast({ type: 'success', message: 'Order placed successfully!' });
         setTimeout(() => {
           setToast(null);
-          navigate('/orders', { state: { forceFetch: true } });
+          // navigate('/orders', { state: { forceFetch: true } }); // Removed redirect
         }, 3000);
       } else if (paymentMethod === 'vnpay') {
         // Call backend to get VNPay payment URL (POST with JSON body)

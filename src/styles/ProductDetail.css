@@ -19,25 +19,33 @@
 .product-detail-container {
   max-width: 1200px;
   min-height: calc(100vh - 64px);
-  margin: 20px auto;
-  padding: 16px;
+  margin: 20px 102px;
+  padding: 0;
   background-color: var(--amazon-bg);
   color: var(--amazon-text);
 }
 
+/* Remove or adjust margin/padding from direct children to prevent margin/padding collapse issues */
 .product-detail-error,
 .product-detail-loading,
 .product-detail-feedback-error,
-.product-detail-feedback-loading {
-  text-align: center;
-  font-size: 0.875rem;
-  padding: 32px;
-  border: 2px solid var(--amazon-border);
-  border-radius: 12px;
-  margin-bottom: 16px;
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 100px;
+.product-detail-feedback-loading,
+.product-detail-main,
+.product-detail-description,
+.product-detail-feedback {
+  margin-left: 0;
+  margin-right: 0;
+  /* Keep vertical margin if needed, but remove horizontal */
+  /* If vertical margin is not needed, set margin-top/bottom to 0 as well */
+}
+
+.product-detail-description,
+.product-detail-feedback {
+  margin-left: 0;
+  margin-right: 0;
+  /* Remove horizontal padding if present */
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .product-detail-error,
@@ -563,6 +571,7 @@
   .product-detail-main { flex-wrap: wrap; }
   .product-detail-image-section, .product-detail-info, .product-detail-actions-section { flex: 1 1 100%; max-width: 100%; }
   .product-detail-info { padding: 8px; }
+  .product-detail-container { margin: 12px 8px; }
 }
 
 @media (max-width: 768px) {
@@ -600,7 +609,7 @@
 }
 
 @media (max-width: 480px) {
-  .product-detail-container { padding: 8px; }
+  .product-detail-container { padding: 8px; margin: 8px 2px; }
   .product-detail-info h1 { font-size: 1.25rem; }
   .product-detail-add-to-favorites, .product-detail-add-to-cart, .product-detail-buy-now { font-size: 0.8125rem; padding: 8px; }
   .product-detail-shipping { font-size: 0.6875rem; }

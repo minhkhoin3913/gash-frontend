@@ -26,7 +26,7 @@
   padding: 24px;
   background-color: var(--amazon-bg);
   border: 2px solid var(--amazon-border);
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: var(--shadow-light);
 }
 

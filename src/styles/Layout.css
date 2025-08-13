@@ -512,6 +512,29 @@
   margin: 0;
 }
 
+/* Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  display: none;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 44px;
+}
+.mobile-nav-label {
+  font-size: 0.75rem;
+  color: var(--amazon-secondary-text);
+  margin-top: 2px;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 @media (max-width: 1024px) {
   .navbar-container {
     gap: 12px;
@@ -571,6 +594,93 @@
   }
   .nav-button i.lni {
     font-size: 1.125rem;
+  }
+
+  /* Sub-navbar mobile fix */
+  .sub-navbar {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0 8px;
+    gap: 12px !important;
+    min-height: 44px;
+    font-size: 0.95rem;
+    border-top: 1px solid var(--amazon-border);
+    border-bottom: 1px solid var(--amazon-border);
+    background: var(--amazon-bg);
+    box-shadow: none;
+    position: sticky;
+    top: calc(var(--navbar-height-responsive));
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    scrollbar-width: thin;
+  }
+  .sub-navbar a {
+    display: inline-block;
+    padding: 10px 8px;
+    color: var(--amazon-link);
+    text-decoration: none;
+    font-size: 1rem;
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  .sub-navbar a:active,
+  .sub-navbar a:focus,
+  .sub-navbar a:hover {
+    background: var(--dropdown-hover-bg);
+    color: var(--amazon-dark);
+  }
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: block !important;
+  }
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    background: var(--amazon-bg);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    z-index: 1100;
+    border-top: 1px solid var(--amazon-border);
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80px;
+  }
+  .mobile-bottom-nav-actions {
+    display: flex;
+    width: 100%;
+    max-width: 500px;
+    justify-content: space-around;
+    align-items: center;
+    height: 100%;
+  }
+  .mobile-nav-item {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .mobile-bottom-nav .nav-button {
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+    border-radius: 50%;
+    background: none;
+    box-shadow: none;
+    margin: 0 4px;
+    color: var(--amazon-dark);
+    background-color: var(--amazon-secondary-bg);
+    transition: background 0.2s;
+  }
+  .mobile-bottom-nav .nav-button:focus,
+  .mobile-bottom-nav .nav-button:hover {
+    background-color: var(--dropdown-hover-bg);
+    color: var(--amazon-link);
   }
 }
 

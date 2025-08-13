@@ -81,10 +81,11 @@
   width: 100%;
   padding: 10px;
   border: 2px solid var(--amazon-border);
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 0.875rem;
   box-sizing: border-box;
   transition: var(--transition-fast);
+  background-color: var(--amazon-bg);
 }
 
 .login-forgot-password {
@@ -111,27 +112,15 @@
 .sign-in-button {
   width: 100%;
   padding: 10px;
+  background-color: var(--amazon-primary);
   border: 2px solid #c89411;
   border-radius: 20px;
   font-size: 0.875rem;
-  box-sizing: border-box;
-  transition: var(--transition-fast);
-}
-
-.login-form-input {
-  background-color: var(--amazon-bg);
-}
-
-.login-form-input:focus,
-.sign-in-button:focus {
-  outline: 2px solid var(--amazon-focus);
-}
-
-.sign-in-button {
-  background-color: var(--amazon-primary);
   cursor: pointer;
   font-weight: 600;
   color: var(--amazon-text);
+  transition: var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .sign-in-button:hover:not(:disabled) {
@@ -144,6 +133,11 @@
   border-color: var(--amazon-border);
   color: var(--amazon-secondary-text);
   cursor: not-allowed;
+}
+
+.sign-in-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
 }
 
 .login-loading-spinner {

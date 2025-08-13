@@ -48,14 +48,26 @@ const Cart = () => {
   const { user } = useContext(AuthContext);
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [actionInProgress, setActionInProgress] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+  const cartCache = useRef({ items: [], timestamp: 0 });
 
   // Fetch cart items
-  const fetchCartItems = useCallback(async () => {
+  const fetchCartItems = useCallback(async (showLoading = true) => {
     if (!user?._id) return;
-    setLoading(true);
+    
+    // Use cached data if it's less than 30 seconds old and not explicitly refreshing
+    const now = Date.now();
+    if (cartCache.current.items.length > 0 && 
+        now - cartCache.current.timestamp < 30000 && 
+        !showLoading) {
+      setCartItems(cartCache.current.items);
+      return;
+    }
+    
+    if (showLoading) setLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('token');
@@ -63,11 +75,14 @@ const Cart = () => {
       const response = await fetchWithRetry(`/carts?acc_id=${user._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setCartItems(Array.isArray(response) ? response : []);
+      const items = Array.isArray(response) ? response : [];
+      setCartItems(items);
+      // Update cache
+      cartCache.current = { items, timestamp: now };
     } catch (err) {
       setError(err.message || 'Failed to load cart items');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [user]);
 
@@ -79,63 +94,92 @@ const Cart = () => {
     }
   }, [user, navigate, fetchCartItems]);
 
-  // Debounced quantity update
-  const debouncedUpdateQuantity = useDebouncedCallback(async (itemId, newQuantity) => {
-  if (!user?._id || newQuantity < 1) return;
-  setLoading(true);
-  setError('');
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('No authentication token found');
-    const item = cartItems.find(item => item._id === itemId);
-    if (!item?.pro_price) throw new Error('Product price not available');
-    const response = await apiClient.put(
-      `/carts/${itemId}`,
-      { pro_quantity: newQuantity, pro_price: item.pro_price },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    setCartItems(prev =>
-      prev.map(item =>
+  // Debounced quantity update with optimistic UI updates
+  const debouncedUpdateQuantity = useDebouncedCallback(async (itemId, newQuantity, originalQuantity) => {
+    if (!user?._id || newQuantity < 1) return;
+    setActionInProgress(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      const item = cartItems.find(item => item._id === itemId);
+      if (!item?.pro_price) throw new Error('Product price not available');
+      const response = await apiClient.put(
+        `/carts/${itemId}`,
+        { pro_quantity: newQuantity, pro_price: item.pro_price },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Update the cache with the server response
+      const updatedItems = cartItems.map(item =>
         item._id === itemId
           ? { ...item, pro_quantity: newQuantity, pro_price: response.data.cartItem.pro_price, Total_price: response.data.cartItem.Total_price }
           : item
-      )
-    );
-    setToast({ type: 'success', message: 'Quantity updated successfully!' });
-    setTimeout(() => setToast(null), 3000);
-  } catch (err) {
-    const errorMessage = err.message || 'Failed to update quantity';
-    setError(errorMessage);
-    setToast({ type: 'error', message: errorMessage });
-    setTimeout(() => setToast(null), 3000);
-  } finally {
-    setLoading(false);
-  }
+      );
+      cartCache.current = { items: updatedItems, timestamp: Date.now() };
+      
+      setToast({ type: 'success', message: 'Quantity updated successfully!' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to update quantity';
+      setError(errorMessage);
+      
+      // Revert to original quantity on error
+      setCartItems(prev =>
+        prev.map(item =>
+          item._id === itemId
+            ? { ...item, pro_quantity: originalQuantity }
+            : item
+        )
+      );
+      
+      setToast({ type: 'error', message: errorMessage });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setActionInProgress(false);
+    }
   }, 500);
 
-  // Remove item from cart
+  // Remove item from cart with optimistic UI update
   const handleRemoveItem = useCallback(async (itemId) => {
     if (!user?._id) return;
-    setLoading(true);
+    setActionInProgress(true);
     setError('');
+    
+    // Store the current items for rollback if needed
+    const previousItems = [...cartItems];
+    
+    // Optimistic UI update
+    setCartItems(prev => prev.filter(item => item._id !== itemId));
+    
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
       await apiClient.delete(`/carts/${itemId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setCartItems(prev => prev.filter(item => item._id !== itemId));
+      
+      // Update cache after successful deletion
+      cartCache.current = { 
+        items: cartItems.filter(item => item._id !== itemId), 
+        timestamp: Date.now() 
+      };
+      
       setToast({ type: 'success', message: 'Item removed from cart!' });
       setTimeout(() => setToast(null), 3000);
     } catch (err) {
       const errorMessage = err.message || 'Failed to remove item';
       setError(errorMessage);
+      
+      // Rollback on error
+      setCartItems(previousItems);
+      
       setToast({ type: 'error', message: errorMessage });
       setTimeout(() => setToast(null), 3000);
     } finally {
-      setLoading(false);
+      setActionInProgress(false);
     }
-  }, [user]);
+  }, [cartItems, user]);
 
   // Format price
   const formatPrice = useCallback((price) => {
@@ -152,14 +196,23 @@ const Cart = () => {
     }, 0);
   }, [cartItems]);
 
-  // Handle quantity change (debounced)
+  // Handle quantity change with optimistic UI update
   const handleQuantityChange = useCallback((itemId, value) => {
     const newQuantity = parseInt(value, 10);
     if (!isNaN(newQuantity) && newQuantity >= 1) {
-      debouncedUpdateQuantity(itemId, newQuantity);
-      setCartItems(prev => prev.map(item => item._id === itemId ? { ...item, pro_quantity: newQuantity } : item));
+      // Find the current item to store its original quantity
+      const currentItem = cartItems.find(item => item._id === itemId);
+      const originalQuantity = currentItem ? currentItem.pro_quantity : 1;
+      
+      // Optimistic UI update
+      setCartItems(prev => prev.map(item => 
+        item._id === itemId ? { ...item, pro_quantity: newQuantity } : item
+      ));
+      
+      // Send the update to the server with the original quantity for rollback if needed
+      debouncedUpdateQuantity(itemId, newQuantity, originalQuantity);
     }
-  }, [debouncedUpdateQuantity]);
+  }, [cartItems, debouncedUpdateQuantity]);
 
   // Retry
   const handleRetry = useCallback(() => {
@@ -216,29 +269,35 @@ const Cart = () => {
             {cartItems.map((item) => (
               <article key={item._id} className="cart-item" tabIndex={0} aria-label={`Cart item: ${item.variant_id?.pro_id?.pro_name || 'Unnamed Product'}`}> 
                 <div className="cart-item-info">
-                  <h2 className="cart-item-name">{item.variant_id?.pro_id?.pro_name || 'Unnamed Product'}</h2>
+                  <p className="cart-item-name">{item.variant_id?.pro_id?.pro_name || 'Unnamed Product'}</p>
                   <p className="cart-item-variant">Color: {item.variant_id?.color_id?.color_name || 'N/A'}, Size: {item.variant_id?.size_id?.size_name || 'N/A'}</p>
                   <p className="cart-item-price">Price: {formatPrice(item.pro_price)}</p>
-                  <div className="cart-item-quantity">
-                    <label htmlFor={`quantity-${item._id}`} className="cart-quantity-label">Quantity:</label>
-                    <input
-                      type="number"
-                      id={`quantity-${item._id}`}
-                      min="1"
-                      value={item.pro_quantity || 1}
-                      onChange={(e) => handleQuantityChange(item._id, e.target.value)}
-                      className="cart-quantity-input"
-                      aria-label={`Quantity for ${item.variant_id?.pro_id?.pro_name || 'product'}`}
-                    />
-                  <button
-                    className="cart-remove-button"
-                    onClick={() => handleRemoveItem(item._id)}
-                    aria-label={`Remove ${item.variant_id?.pro_id?.pro_name || 'product'} from cart`}
-                  >
-                    Remove
-                  </button>
-                  </div>
                   <p className="cart-item-total">{formatPrice((item.pro_price || 0) * (item.pro_quantity || 0))}</p>
+                </div>
+                <div className="cart-item-action">
+                  <div className="cart-item-quantity">
+                    <div className="cart-quantity-group">
+                      <label htmlFor={`quantity-${item._id}`} className="cart-quantity-label">Quantity:</label>
+                      <input
+                        type="number"
+                        id={`quantity-${item._id}`}
+                        min="1"
+                        value={item.pro_quantity || 1}
+                        onChange={(e) => handleQuantityChange(item._id, e.target.value)}
+                        className="cart-quantity-input"
+                        aria-label={`Quantity for ${item.variant_id?.pro_id?.pro_name || 'product'}`}
+                        disabled={actionInProgress}
+                      />
+                    </div>
+                    <button
+                      className="cart-remove-button"
+                      onClick={() => handleRemoveItem(item._id)}
+                      aria-label={`Remove ${item.variant_id?.pro_id?.pro_name || 'product'} from cart`}
+                      disabled={actionInProgress}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
@@ -249,7 +308,7 @@ const Cart = () => {
               <button
                 className="cart-checkout-button"
                 onClick={() => navigate('/checkout')}
-                disabled={cartItems.length === 0 || loading}
+                disabled={cartItems.length === 0 || loading || actionInProgress}
                 aria-label="Proceed to checkout"
               >
                 Proceed to Checkout

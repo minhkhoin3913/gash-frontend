@@ -41,6 +41,16 @@ const Login = () => {
         usernameRef.current?.focus();
         return;
       }
+      if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+        setError('Username must be between 3 and 30 characters.');
+        usernameRef.current?.focus();
+        return;
+      }
+      if (trimmedPassword.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        usernameRef.current?.focus();
+        return;
+      }
 
       setIsLoading(true);
       try {

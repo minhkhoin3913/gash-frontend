@@ -207,17 +207,19 @@ const Layout = ({ children }) => {
   useEffect(() => {
     if (!isSearchDropdownOpen) return;
     const items = searchDropdownRef.current?.querySelectorAll('.search-dropdown-item');
+    if (!items || items.length === 0) return;
     let index = 0;
 
     const handleKeyDown = (e) => {
+      if (!items || items.length === 0) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         index = (index + 1) % items.length;
-        items[index].focus();
+        if (items[index]) items[index].focus();
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         index = (index - 1 + items.length) % items.length;
-        items[index].focus();
+        if (items[index]) items[index].focus();
       } else if (e.key === 'Enter' && document.activeElement.classList.contains('search-dropdown-item')) {
         document.activeElement.click();
       }
@@ -225,7 +227,7 @@ const Layout = ({ children }) => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchDropdownOpen]);
+  }, [isSearchDropdownOpen, searchResults]);
 
   // Fetch search results for AJAX dropdown
   useEffect(() => {
@@ -523,8 +525,8 @@ const Layout = ({ children }) => {
             )}
           </div>
 
-          {/* Navigation Actions */}
-          <div className="nav-actions">
+          {/* Navigation Actions (desktop only) */}
+          <div className="nav-actions desktop-only">
             {/* Account Menu */}
             <div className="account-menu" ref={dropdownRef}>
               <div className="nav-button-wrapper">
@@ -573,6 +575,19 @@ const Layout = ({ children }) => {
               </button>
             </div>
 
+            {/* Chat Button */}
+            <div className="nav-button-wrapper">
+              <button
+                className="nav-button chat"
+                onClick={handleNotificationsClick}
+                aria-label="Chat (Coming soon!)"
+                type="button"
+                ref={(el) => (navButtonRefs.current[3] = el)}
+              >
+                <i className="lni lni-comments" aria-hidden="true"></i>
+              </button>
+            </div>
+
             {/* Cart Button */}
             <div className="nav-button-wrapper">
               <button
@@ -585,6 +600,60 @@ const Layout = ({ children }) => {
                 <i className="lni lni-cart" aria-hidden="true"></i>
               </button>
             </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav mobile-only" role="navigation" aria-label="Mobile bottom navigation">
+        <div className="mobile-bottom-nav-actions">
+          {/* Account Menu (mobile) */}
+          <div className="mobile-nav-item">
+            <button
+              className="nav-button account"
+              onClick={handleAccountClick}
+              aria-label={user ? `Account menu for ${userDisplayName}` : 'Sign in'}
+              type="button"
+            >
+              <i className="lni lni-user" aria-hidden="true"></i>
+            </button>
+            <span className="mobile-nav-label">Account</span>
+          </div>
+          {/* Notifications Button (mobile) */}
+          <div className="mobile-nav-item">
+            <button
+              className="nav-button notifications"
+              onClick={handleNotificationsClick}
+              aria-label={user ? 'View notifications' : 'Sign in to view notifications'}
+              type="button"
+            >
+              <i className="lni lni-alarm" aria-hidden="true"></i>
+            </button>
+            <span className="mobile-nav-label">Notifications</span>
+          </div>
+          {/* Chat Button (mobile) */}
+          <div className="mobile-nav-item">
+            <button
+              className="nav-button chat"
+              onClick={handleNotificationsClick}
+              aria-label="Chat (Coming soon!)"
+              type="button"
+            >
+              <i className="lni lni-comments" aria-hidden="true"></i>
+            </button>
+            <span className="mobile-nav-label">Chat</span>
+          </div>
+          {/* Cart Button (mobile) */}
+          <div className="mobile-nav-item">
+            <button
+              className="nav-button cart"
+              onClick={handleCartClick}
+              aria-label={user ? 'View shopping cart' : 'Sign in to view cart'}
+              type="button"
+            >
+              <i className="lni lni-cart" aria-hidden="true"></i>
+            </button>
+            <span className="mobile-nav-label">Cart</span>
           </div>
         </div>
       </nav>

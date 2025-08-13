@@ -20,7 +20,7 @@
   margin: 16px auto; /* Minimized top margin */
   padding: 16px;
   background-color: var(--amazon-bg);
-  /* font-family: Arial, sans-serif; */
+  
   min-height: calc(100vh - 64px);
   display: flex;
   justify-content: center;
@@ -32,8 +32,8 @@
   max-width: 360px;
   padding: 24px;
   background-color: var(--amazon-bg);
-  border: 1px solid var(--amazon-border);
-  border-radius: 4px;
+  border: 2px solid var(--amazon-border);
+  border-radius: 12px;
   box-shadow: var(--shadow-light);
 }
 
@@ -81,29 +81,27 @@
 
 .signup-form-input {
   width: 100%;
-  max-width: 100%; /* Constrain to parent */
   padding: 10px;
-  box-sizing: border-box; /* Include padding/border in width */
-  border: 1px solid var(--amazon-border);
-  border-radius: 3px;
+  border: 2px solid var(--amazon-border);
+  border-radius: 8px;
   font-size: 0.875rem;
+  box-sizing: border-box;
   background-color: var(--amazon-bg);
   transition: var(--transition-fast);
 }
 
 .signup-form-input:focus {
   outline: 2px solid var(--amazon-focus);
-  border-color: var(--amazon-focus);
 }
 
 .create-account-button {
   width: 100%;
   padding: 10px;
   background-color: var(--amazon-primary);
-  border: 1px solid #d5a429;
+  border: 2px solid #c89411;
   border-radius: 20px;
-  cursor: pointer;
   font-size: 0.875rem;
+  cursor: pointer;
   font-weight: 600;
   color: var(--amazon-text);
   transition: var(--transition-fast);
@@ -111,10 +109,13 @@
 
 .create-account-button:hover:not(:disabled) {
   background-color: #f7ca00;
+  border-color: #c89411;
 }
 
 .create-account-button:disabled {
   background-color: #e9ecef;
+  border-color: var(--amazon-border);
+  color: var(--amazon-secondary-text);
   cursor: not-allowed;
 }
 
@@ -177,6 +178,7 @@
 
   .signup-form-input {
     font-size: 0.8125rem;
+    padding: 8px;
   }
 
   .create-account-button {
@@ -212,7 +214,7 @@
 }
 
 @media (prefers-contrast: high) {
-  .signup-box {
+  .signup-box, .signup-form-input {
     border-width: 2px;
   }
 
@@ -220,7 +222,7 @@
     outline: 3px solid var(--amazon-focus);
   }
 
-  .create-account-button, .signup-login-link {
+  .create-account-button {
     border-width: 2px;
     font-weight: 700;
   }

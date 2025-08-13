@@ -9,6 +9,7 @@ const Contact = () => {
     phone: "",
     message: "",
   });
+  const [error, setError] = useState("");
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -21,7 +22,28 @@ const Contact = () => {
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
-      console.log("Form submitted:", formData);
+      const name = formData.name.trim();
+      const email = formData.email.trim();
+      const phone = formData.phone.trim();
+      const message = formData.message.trim();
+      if (!name || name.length > 50) {
+        setError("Name is required and cannot exceed 50 characters");
+        return;
+      }
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+      if (phone && !/^\d{10}$/.test(phone)) {
+        setError("Phone number must be exactly 10 digits");
+        return;
+      }
+      if (!message || message.length > 500) {
+        setError("Message is required and cannot exceed 500 characters");
+        return;
+      }
+      setError("");
+      console.log("Form submitted:", { name, email, phone, message });
       // Handle form submission here (e.g., API call)
     },
     [formData]
@@ -81,6 +103,9 @@ const Contact = () => {
             <div className="contact-form-underline"></div>
           </h2>
           <form onSubmit={handleSubmit} className="contact-form">
+            {error && (
+              <div className="contact-error" role="alert" style={{ color: 'red', marginBottom: 8 }}>{error}</div>
+            )}
             <div className="contact-form-grid">
               <input
                 type="text"

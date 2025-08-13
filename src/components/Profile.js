@@ -66,20 +66,27 @@ const Profile = () => {
 
   const validateForm = useCallback(() => {
     const newErrors = {};
-    const { username, name, email, phone, address, image, password, repeatPassword } = formData;
+    const username = formData.username.trim();
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+    const phone = formData.phone.trim();
+    const address = formData.address.trim();
+    const image = formData.image.trim();
+    const password = formData.password.trim();
+    const repeatPassword = formData.repeatPassword.trim();
     if (!username || username.length < 3 || username.length > 30) {
       newErrors.username = 'Username must be 3-30 characters';
     }
-    if (!name || name.length > 50) {
+    if (name && name.length > 50) {
       newErrors.name = 'Name cannot exceed 50 characters';
     }
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       newErrors.email = 'Valid email is required';
     }
-    if (!phone || !/^\d{10}$/.test(phone)) {
+    if (phone && !/^\d{10}$/.test(phone)) {
       newErrors.phone = 'Phone must be exactly 10 digits';
     }
-    if (!address || address.length > 100) {
+    if (address && address.length > 100) {
       newErrors.address = 'Address cannot exceed 100 characters';
     }
     if (image && !/^(http|https):\/\/[^ "]+$/.test(image)) {

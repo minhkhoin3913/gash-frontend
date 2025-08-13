@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import '../styles/Signup.css';
+import '../styles/Register.css';
 
 const Register = () => {
   const location = useLocation();
@@ -44,12 +44,19 @@ const Register = () => {
   }, []);
 
   const validateForm = useCallback(() => {
-    const { username, name, email, phone, address, password, repeatPassword, image } = formData;
+    const username = formData.username.trim();
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+    const phone = formData.phone.trim();
+    const address = formData.address.trim();
+    const password = formData.password.trim();
+    const repeatPassword = formData.repeatPassword.trim();
+    const image = formData.image.trim();
     if (username.length < 3 || username.length > 30) return 'Username must be between 3 and 30 characters';
-    if (name.length > 50) return 'Name cannot exceed 50 characters';
+    if (name && name.length > 50) return 'Name cannot exceed 50 characters';
     if (!/^\S+@\S+\.\S+$/.test(email)) return 'Please enter a valid email address';
-    if (!/^\d{10}$/.test(phone)) return 'Phone number must be exactly 10 digits';
-    if (address.length > 100) return 'Address cannot exceed 100 characters';
+    if (phone && !/^\d{10}$/.test(phone)) return 'Phone number must be exactly 10 digits';
+    if (address && address.length > 100) return 'Address cannot exceed 100 characters';
     if (password.length < 8) return 'Password must be at least 8 characters long';
     if (password !== repeatPassword) return 'Passwords do not match';
     if (image && !/^(http|https):\/\/[^ "]+$/.test(image)) return 'Image must be a valid URL';

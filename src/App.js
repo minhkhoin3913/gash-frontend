@@ -21,12 +21,14 @@ import Home from "./components/Home";
 import BlogPost from "./components/BlogPost";
 import Contact from "./components/Contact";
 import VNPayReturn from "./components/VNPayReturn";
+import ScrollToTop from "./components/ScrollToTop";
 
 const App = () => {
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <Router>
         <AuthProvider>
+          <ScrollToTop />
           <Layout>
             <Routes>
               <Route path="/" element={<Home />} />

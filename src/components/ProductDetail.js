@@ -154,12 +154,18 @@ const ProductDetail = () => {
     setError(null);
 
     try {
-      const [productResponse, variantsResponse, imagesResponse] =
-        await Promise.all([
-          fetchWithRetry(`/products/${id}`),
-          fetchWithRetry(`/variants?pro_id=${id}`),
-          fetchWithRetry(`/specifications/image/product/${id}`),
-        ]);
+      // Always fetch product and variants, but handle images separately
+      const [productResponse, variantsResponse] = await Promise.all([
+        fetchWithRetry(`/products/${id}`),
+        fetchWithRetry(`/variants?pro_id=${id}`),
+      ]);
+
+      let imagesResponse = [];
+      try {
+        imagesResponse = await fetchWithRetry(`/specifications/image/product/${id}`);
+      } catch (imgErr) {
+        imagesResponse = [];
+      }
 
       if (!productResponse) {
         throw new Error("Product not found");
@@ -783,7 +789,7 @@ const ProductDetail = () => {
               <strong>FREE delivery</strong> by tomorrow
             </div>
             <div className="product-detail-shipping-deliver">
-              <strong>Deliver to</strong> United States
+              <strong>Deliver to</strong> Vietnam
             </div>
             <div className="product-detail-shipping-returns">
               <strong>Return Policy:</strong> 30-day returns. Free returns on
